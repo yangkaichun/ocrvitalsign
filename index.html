@@ -3,110 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>遠傳 手機OCR 血壓計掃描 讀取器 DEMO</title>
+    <title>智慧健康掃描</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             padding: 20px;
             gap: 20px;
-            background-color: #f4f7f6;
+            background-color: #f0f2f5;
             color: #333;
+            line-height: 1.6;
         }
         h1 {
             color: #2c3e50;
             margin-bottom: 10px;
+            font-size: 2em;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 350px;
         }
         button {
-            padding: 15px 30px;
-            font-size: 1.2em;
+            padding: 18px 25px;
+            font-size: 1.1em;
             cursor: pointer;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             background-color: #007bff;
             color: white;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 90%;
-            max-width: 300px;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
+            font-weight: bold;
         }
         button:hover {
             background-color: #0056b3;
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
         }
         #videoElement {
             width: 100%;
             max-width: 500px;
             height: auto;
-            border: 1px solid #ccc;
-            background-color: #f0f0f0;
-            display: none; /* 預設隱藏 */
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid #ddd;
+            background-color: #fcfcfc;
+            display: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
         #canvasElement {
-            display: none; /* 預設隱藏 */
+            display: none;
         }
         #messageDisplay {
             margin-top: 15px;
-            padding: 10px 15px;
-            background-color: #e2f0fe;
-            border: 1px solid #b3d9ff;
-            border-radius: 5px;
-            color: #0056b3;
+            padding: 12px 20px;
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 8px;
+            color: #0050b3;
             font-size: 0.95em;
             width: 90%;
             max-width: 500px;
             text-align: center;
-            min-height: 20px; /* 確保有最小高度 */
+            min-height: 40px; /* 確保有足夠高度顯示多行訊息 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
         }
         .result-section {
             margin-top: 30px;
             width: 100%;
             max-width: 500px;
-            border: 1px solid #ddd;
-            padding: 20px;
-            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            padding: 25px;
+            border-radius: 10px;
             background-color: #ffffff;
-            box-shadow: 0 2px 8px rgba[0, 0, 0, 0.1];
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
         .result-section h3 {
             color: #2c3e50;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+            font-size: 1.5em;
+            text-align: center;
         }
         .result-section p {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-size: 1.1em;
-            line-height: 1.5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #f5f5f5;
+        }
+        .result-section p:last-child {
+            border-bottom: none;
         }
         .result-section strong {
             color: #007bff;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+        .instruction-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            width: 90%;
+            max-width: 500px;
+            color: #856404;
+            font-size: 0.9em;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .instruction-box strong {
+            color: #856404;
         }
     </style>
 </head>
 <body>
 
-    <h1>>遠傳 手機OCR 血壓計掃描 讀取器 DEMO</h1>
+    <h1>智慧健康掃描器</h1>
 
-    <button id="qrCodeScanButton">掃描 QR Code</button>
-    <button id="bioDataScanButton">掃描血壓數據</button>
+    <div class="button-group">
+        <button id="qrCodeScanButton">掃描 QR Code</button>
+        <button id="bloodPressureScanButton">掃描血壓計數據</button>
+    </div>
 
     <div id="messageDisplay">請選擇一個功能開始掃描。</div>
 
     <video id="videoElement" autoplay playsinline></video>
     <canvas id="canvasElement"></canvas>
 
+    <div class="instruction-box">
+        <p><strong>掃描提示：</strong></p>
+        <ul>
+            <li>請確保裝置螢幕**光線充足、無反光**。</li>
+            <li>盡量讓數字**清晰填滿畫面中央**。</li>
+            <li>若辨識不佳，請嘗試調整距離或角度。</li>
+        </ul>
+    </div>
+
     <div class="result-section">
         <h3>掃描結果：</h3>
         <p>QR Code 數據: <strong id="qrCodeResult">尚無資料</strong></p>
-        <p>收縮壓: <strong id="systolicBP">尚無資料</strong></p>
-        <p>舒張壓: <strong id="diastolicBP">尚無資料</strong></p>
-        <p>心率 (脈搏): <strong id="heartRate">尚無資料</strong></p>
+        <p>收縮壓 (SYS): <strong id="systolicBP">尚無資料</strong></p>
+        <p>舒張壓 (DIA): <strong id="diastolicBP">尚無資料</strong></p>
+        <p>心率 (HR): <strong id="heartRate">尚無資料</strong></p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -115,7 +164,7 @@
 
     <script>
         const qrCodeScanButton = document.getElementById('qrCodeScanButton');
-        const bioDataScanButton = document.getElementById('bioDataScanButton');
+        const bloodPressureScanButton = document.getElementById('bloodPressureScanButton'); // 更名為 bloodPressureScanButton
         const videoElement = document.getElementById('videoElement');
         const canvasElement = document.getElementById('canvasElement');
         const context = canvasElement.getContext('2d');
@@ -133,6 +182,7 @@
                 currentStream.getTracks().forEach(track => track.stop()); // 關閉之前的串流
             }
             try {
+                // 嘗試使用後置鏡頭
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 videoElement.srcObject = stream;
                 videoElement.style.display = 'block';
@@ -149,7 +199,7 @@
                 return stream;
             } catch (err) {
                 console.error('無法啟動相機：', err);
-                messageDisplay.textContent = '無法啟動相機。請確認已授權相機存取權限，並且您的網頁是透過 HTTPS 協定載入。';
+                messageDisplay.textContent = '錯誤：無法啟動相機。請確認已授權相機存取權限，並且您的網頁是透過 HTTPS 協定載入。';
                 return null;
             }
         }
@@ -160,11 +210,12 @@
                 currentStream.getTracks().forEach(track => track.stop());
                 videoElement.srcObject = null;
                 videoElement.style.display = 'none';
+                currentStream = null; // 清空串流變數
             }
         }
 
         // 重置生理數據顯示
-        function resetBioDataDisplay() {
+        function resetBloodPressureDisplay() {
             systolicBP.textContent = '尚無資料';
             diastolicBP.textContent = '尚無資料';
             heartRate.textContent = '尚無資料';
@@ -172,15 +223,16 @@
 
         // 掃描 QR Code 函數
         qrCodeScanButton.addEventListener('click', async () => {
+            stopCamera(); // 停止之前可能的相機流
             messageDisplay.textContent = '掃描 QR Code 中，請將 QR Code 置於畫面中央...';
             qrCodeResult.textContent = '掃描中...';
-            resetBioDataDisplay(); // 清空生理數據結果
+            resetBloodPressureDisplay(); // 清空生理數據結果
 
             const stream = await startCamera();
             if (!stream) return;
 
             function tick() {
-                if (!currentStream) return;
+                if (!currentStream) return; // 如果相機已停止，則停止掃描循環
 
                 if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
                     context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
@@ -192,113 +244,125 @@
                     if (code) {
                         qrCodeResult.textContent = code.data;
                         messageDisplay.textContent = 'QR Code 掃描完成！';
-                        stopCamera();
+                        stopCamera(); // 掃描到 QR Code 後停止相機
                         return;
                     }
                 }
-                requestAnimationFrame(tick);
+                requestAnimationFrame(tick); // 繼續掃描
             }
             tick();
         });
 
         // 掃描血壓數據函數 (OCR)
-        bioDataScanButton.addEventListener('click', async () => {
-            resetBioDataDisplay(); // 清空生理數據結果，準備顯示新的血壓值
-            messageDisplay.textContent = '相機已開啟，請將血壓計螢幕置於框內，3 秒後會自動截圖辨識...';
+        bloodPressureScanButton.addEventListener('click', async () => { // 更名為 bloodPressureScanButton
+            stopCamera(); // 停止之前可能的相機流
+            resetBloodPressureDisplay(); // 清空生理數據結果
+            messageDisplay.textContent = '相機已開啟，請將血壓計螢幕置於框內。3 秒後會自動截圖並進行辨識...';
 
             const stream = await startCamera();
             if (!stream) return;
 
+            // 為了更穩定的 OCR，我們在截圖前等待一段時間，讓使用者調整畫面
             setTimeout(async () => {
-                if (!currentStream) {
+                if (!currentStream) { // 如果使用者在此期間關閉了相機
                     messageDisplay.textContent = '掃描已取消。';
                     return;
                 }
 
                 if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
                     context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-                    stopCamera();
+                    stopCamera(); // 截圖後停止相機
 
                     try {
                         messageDisplay.textContent = '正在進行 OCR 辨識血壓數據，請稍候... (這可能需要一些時間)';
 
+                        // **Tesseract.js OCR 處理**
+                        // 優化 OCR 設定：限制辨識字元為數字、點、斜線。
+                        // 未來可在此處替換為呼叫後端 API 的邏輯，例如：
+                        // const recognizedText = await sendImageToBackendForOCR(canvasElement.toDataURL('image/jpeg'));
                         const { data: { text } } = await Tesseract.recognize(
                             canvasElement,
-                            'eng',
+                            'eng', // 英文語言包，對數字辨識通常足夠
                             {
-                                logger: m => console.log(m),
-                                tessedit_char_whitelist: '0123456789./', // 允許數字、點、斜線
+                                logger: m => {
+                                    if (m.status === 'recognizing text') {
+                                        messageDisplay.textContent = `辨識中... (${Math.round(m.progress * 100)}%)`;
+                                    } else {
+                                        console.log(m); // 輸出其他進度訊息到控制台
+                                    }
+                                },
+                                tessedit_char_whitelist: '0123456789./', // 僅辨識數字、點、斜線
                             }
                         );
 
-                        // 嘗試從辨識結果中解析血壓和心率
+                        // **解析辨識結果為收縮壓、舒張壓、心率**
                         // 移除所有非數字、非點、非斜線的字元，並將其替換為空格，方便後續分割
                         const cleanText = text.replace(/[^0-9./]/g, ' ').trim();
                         // 將多個空格替換為單個空格，然後按空格或斜線分割
-                        const numbers = cleanText.split(/[\s/]+/).filter(n => n.length > 0 && !isNaN(n));
+                        const rawNumbers = cleanText.split(/[\s/]+/).filter(n => n.length > 0 && !isNaN(n));
 
                         console.log("OCR 原始文字:", text);
-                        console.log("OCR 清理後的數字陣列:", numbers);
+                        console.log("清理後的數字陣列 (rawNumbers):", rawNumbers);
 
-                        // 判斷並填入血壓和心率
-                        // 一般來說，血壓計會顯示三個主要數字：收縮壓、舒張壓、心率
-                        // 順序可能為 120 / 80 / 75 (心率) 或 120 / 75 (心率) / 80
-                        // 我們嘗試根據數字的大小和常見範圍來判斷
-                        let identifiedBP = []; // 用來儲存可能是血壓的數字
-                        let identifiedHR = null; // 用來儲存可能是心率的數字
+                        // 將字串數字轉換為整數，並過濾掉不符合常理的極值
+                        const validNumbers = rawNumbers
+                            .map(numStr => parseInt(numStr, 10))
+                            .filter(num => !isNaN(num) && num >= 30 && num <= 300); // 一般血壓心率的合理範圍
 
-                        numbers.forEach(numStr => {
-                            const num = parseInt(numStr, 10);
-                            if (isNaN(num)) return;
+                        console.log("有效數字陣列 (validNumbers):", validNumbers);
 
-                            // 排除太小或太大的異常數字
-                            if (num < 20 || num > 300) return;
+                        let sysVal = '未能辨識', diaVal = '未能辨識', hrVal = '未能辨識';
 
-                            if (num >= 40 && num <= 120 && identifiedHR === null) {
-                                // 較小的數字且在心率常見範圍 (40-120)，優先判斷為心率
-                                // 這裡假設心率不會是第一個或第二個數字（即收縮壓或舒張壓）
-                                identifiedHR = num;
-                            } else {
-                                // 剩下的數字可能是血壓
-                                identifiedBP.push(num);
+                        // 嘗試解析：假設血壓計會顯示三個數字。
+                        // 這裡提供一個簡易的啟發式判斷邏輯，實際應用會更複雜
+                        if (validNumbers.length >= 3) {
+                            // 將數字按降序排列
+                            validNumbers.sort((a, b) => b - a);
+
+                            // 最常見的模式是：最大的兩個是血壓，剩下的是心率
+                            // 通常收縮壓 > 舒張壓 > 心率 (或 心率約在 60-100)
+                            sysVal = validNumbers[0] + ' mmHg';
+                            diaVal = validNumbers[1] + ' mmHg';
+                            hrVal = validNumbers[2] + ' bpm';
+
+                            // 簡單檢查：如果第三個數字（心率）異常大，可能辨識錯誤
+                            if (validNumbers[2] > 150) { // 假設心率很少超過150
+                                hrVal = '未能辨識 (心率可能錯誤)';
                             }
-                        });
 
-                        // 對血壓數字進行排序，大的為收縮壓，小的為舒張壓
-                        identifiedBP.sort((a, b) => b - a); // 降序
+                        } else if (validNumbers.length === 2) {
+                            // 如果只有兩個數字，可能是收縮壓和舒張壓，或收縮壓和心率
+                            // 這裡假設是收縮壓和舒張壓
+                            validNumbers.sort((a, b) => b - a);
+                            sysVal = validNumbers[0] + ' mmHg';
+                            diaVal = validNumbers[1] + ' mmHg';
+                            messageDisplay.textContent += ' (僅辨識到血壓值，心率缺失)';
 
-                        if (identifiedBP.length >= 2) {
-                            systolicBP.textContent = identifiedBP[0] + ' mmHg';
-                            diastolicBP.textContent = identifiedBP[1] + ' mmHg';
-                        } else if (identifiedBP.length === 1) {
-                            // 如果只有一個血壓數字，可能只辨識到收縮壓或舒張壓
-                            systolicBP.textContent = identifiedBP[0] + ' mmHg (可能只有收縮壓)';
-                            diastolicBP.textContent = '部分數據';
-                        } else {
-                            systolicBP.textContent = '未能辨識';
-                            diastolicBP.textContent = '未能辨識';
+                        } else if (validNumbers.length === 1) {
+                            // 如果只有一個數字，可能是收縮壓或心率
+                            sysVal = validNumbers[0] + ' mmHg (僅辨識到單一數值)';
+                            messageDisplay.textContent += ' (僅辨識到單一數值)';
                         }
 
-                        if (identifiedHR !== null) {
-                            heartRate.textContent = identifiedHR + ' bpm';
-                        } else {
-                            heartRate.textContent = '未能辨識';
-                        }
 
-                        if (systolicBP.textContent === '未能辨識' && heartRate.textContent === '未能辨識') {
-                            messageDisplay.textContent = '未能從圖片中辨識出有效的血壓或心率數據。原始辨識文字: ' + text;
-                        } else {
+                        systolicBP.textContent = sysVal;
+                        diastolicBP.textContent = diaVal;
+                        heartRate.textContent = hrVal;
+
+                        if (sysVal !== '未能辨識' || hrVal !== '未能辨識') {
                             messageDisplay.textContent = '血壓數據辨識完成！';
+                        } else {
+                            messageDisplay.textContent = '未能從圖片中辨識出有效的血壓或心率數據。請重新嘗試。';
                         }
 
                     } catch (error) {
                         console.error('OCR 辨識錯誤：', error);
-                        messageDisplay.textContent = 'OCR 辨識過程中發生錯誤。';
-                        resetBioDataDisplay();
+                        messageDisplay.textContent = 'OCR 辨識過程中發生錯誤。請檢查網路連接或重試。';
+                        resetBloodPressureDisplay();
                     }
                 } else {
-                    messageDisplay.textContent = '無法獲取影像，請確保相機正常工作。';
-                    resetBioDataDisplay();
+                    messageDisplay.textContent = '無法獲取影像，請確保相機正常工作並有足夠光源。';
+                    resetBloodPressureDisplay();
                     stopCamera();
                 }
             }, 3000); // 等待 3 秒讓使用者調整位置
