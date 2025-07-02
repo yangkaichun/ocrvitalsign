@@ -1,373 +1,453 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>智慧健康掃描</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            gap: 20px;
-            background-color: #f0f2f5;
-            color: #333;
-            line-height: 1.6;
-        }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-size: 2em;
-        }
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-            max-width: 350px;
-        }
-        button {
-            padding: 18px 25px;
-            font-size: 1.1em;
-            cursor: pointer;
-            border: none;
-            border-radius: 10px;
-            background-color: #007bff;
-            color: white;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
-            font-weight: bold;
-        }
-        button:hover {
-            background-color: #0056b3;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
-        }
-        #videoElement {
-            width: 100%;
-            max-width: 500px;
-            height: auto;
-            border: 1px solid #ddd;
-            background-color: #fcfcfc;
-            display: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        #canvasElement {
-            display: none;
-        }
-        #messageDisplay {
-            margin-top: 15px;
-            padding: 12px 20px;
-            background-color: #e6f7ff;
-            border: 1px solid #91d5ff;
-            border-radius: 8px;
-            color: #0050b3;
-            font-size: 0.95em;
-            width: 90%;
-            max-width: 500px;
-            text-align: center;
-            min-height: 40px; /* 確保有足夠高度顯示多行訊息 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        .result-section {
-            margin-top: 30px;
-            width: 100%;
-            max-width: 500px;
-            border: 1px solid #e0e0e0;
-            padding: 25px;
-            border-radius: 10px;
-            background-color: #ffffff;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-        }
-        .result-section h3 {
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 15px;
-            font-size: 1.5em;
-            text-align: center;
-        }
-        .result-section p {
-            margin-bottom: 12px;
-            font-size: 1.1em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px dashed #f5f5f5;
-        }
-        .result-section p:last-child {
-            border-bottom: none;
-        }
-        .result-section strong {
-            color: #007bff;
-            font-weight: 600;
-            font-size: 1.2em;
-        }
-        .instruction-box {
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            width: 90%;
-            max-width: 500px;
-            color: #856404;
-            font-size: 0.9em;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        .instruction-box strong {
-            color: #856404;
-        }
-    </style>
+    <title>醫療數據掃描器</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">
+            <i class="fas fa-heartbeat mr-2"></i>醫療數據掃描器
+        </h1>
+        
+        <!-- 操作按鍵 -->
+        <div class="grid grid-cols-1 gap-4 mb-6">
+            <button id="qrScanBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition duration-300">
+                <i class="fas fa-qrcode mr-2"></i>掃描 QR Code
+            </button>
+            <button id="medicalScanBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-lg shadow-lg transition duration-300">
+                <i class="fas fa-camera mr-2"></i>掃描醫療設備數值
+            </button>
+        </div>
 
-    <h1>智慧健康掃描器</h1>
+        <!-- 文件上傳區域 -->
+        <div id="uploadArea" class="hidden bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <i class="fas fa-upload text-4xl text-gray-400 mb-4"></i>
+                <p class="text-gray-600 mb-4">點擊上傳圖片或拖拽圖片到此處</p>
+                <input type="file" id="imageInput" accept="image/*" capture="camera" class="hidden">
+                <button id="uploadBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                    選擇圖片
+                </button>
+            </div>
+        </div>
 
-    <div class="button-group">
-        <button id="qrCodeScanButton">掃描 QR Code</button>
-        <button id="bloodPressureScanButton">掃描血壓計數據</button>
+        <!-- 相機預覽區域 -->
+        <div id="cameraContainer" class="hidden bg-white rounded-lg shadow-lg p-4 mb-6">
+            <video id="video" class="w-full rounded-lg" autoplay playsinline></video>
+            <canvas id="canvas" class="hidden"></canvas>
+            <div class="mt-4 text-center">
+                <button id="captureBtn" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 mr-2">
+                    <i class="fas fa-camera mr-2"></i>拍照
+                </button>
+                <button id="stopCameraBtn" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">
+                    <i class="fas fa-stop mr-2"></i>停止
+                </button>
+            </div>
+        </div>
+
+        <!-- 處理狀態 -->
+        <div id="processingStatus" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-spinner fa-spin mr-2"></i>
+                <span id="statusText">處理中...</span>
+            </div>
+        </div>
+
+        <!-- 測試按鈕 -->
+        <div class="mb-6">
+            <button id="testBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-300">
+                <i class="fas fa-test-tube mr-2"></i>測試辨識 (血壓: 122/78, 心率: 66)
+            </button>
+        </div>
+
+        <!-- 結果顯示區域 -->
+        <div id="resultsContainer" class="hidden">
+            <!-- QR Code 結果 -->
+            <div id="qrResult" class="hidden bg-white rounded-lg shadow-lg p-6 mb-4">
+                <h3 class="text-lg font-semibold mb-3 text-blue-600">
+                    <i class="fas fa-qrcode mr-2"></i>QR Code 掃描結果
+                </h3>
+                <div id="qrContent" class="bg-gray-100 p-3 rounded border break-all"></div>
+            </div>
+
+            <!-- 醫療數據結果 -->
+            <div id="medicalResult" class="hidden bg-white rounded-lg shadow-lg p-6 mb-4">
+                <h3 class="text-lg font-semibold mb-3 text-green-600">
+                    <i class="fas fa-heartbeat mr-2"></i>生理數據辨識結果
+                </h3>
+                <div id="medicalData" class="space-y-3">
+                    <div id="bloodPressure" class="hidden">
+                        <span class="font-medium text-red-600">血壓:</span>
+                        <span id="systolic" class="mx-2"></span>/<span id="diastolic"></span> mmHg
+                    </div>
+                    <div id="heartRate" class="hidden">
+                        <span class="font-medium text-blue-600">心率:</span>
+                        <span id="pulse" class="mx-2"></span> bpm
+                    </div>
+                    <div id="bloodOxygen" class="hidden">
+                        <span class="font-medium text-green-600">血氧:</span>
+                        <span id="spo2" class="mx-2"></span>%
+                    </div>
+                    <div id="bloodSugar" class="hidden">
+                        <span class="font-medium text-purple-600">血糖:</span>
+                        <span id="glucose" class="mx-2"></span> mg/dL
+                    </div>
+                </div>
+                <div id="rawOcrText" class="mt-4 p-3 bg-gray-100 rounded text-sm">
+                    <strong>原始辨識文字:</strong>
+                    <div id="ocrContent" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    <div id="messageDisplay">請選擇一個功能開始掃描。</div>
-
-    <video id="videoElement" autoplay playsinline></video>
-    <canvas id="canvasElement"></canvas>
-
-    <div class="instruction-box">
-        <p><strong>掃描提示：</strong></p>
-        <ul>
-            <li>請確保裝置螢幕**光線充足、無反光**。</li>
-            <li>盡量讓數字**清晰填滿畫面中央**。</li>
-            <li>若辨識不佳，請嘗試調整距離或角度。</li>
-        </ul>
-    </div>
-
-    <div class="result-section">
-        <h3>掃描結果：</h3>
-        <p>QR Code 數據: <strong id="qrCodeResult">尚無資料</strong></p>
-        <p>收縮壓 (SYS): <strong id="systolicBP">尚無資料</strong></p>
-        <p>舒張壓 (DIA): <strong id="diastolicBP">尚無資料</strong></p>
-        <p>心率 (HR): <strong id="heartRate">尚無資料</strong></p>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-
 
     <script>
-        const qrCodeScanButton = document.getElementById('qrCodeScanButton');
-        const bloodPressureScanButton = document.getElementById('bloodPressureScanButton'); // 更名為 bloodPressureScanButton
-        const videoElement = document.getElementById('videoElement');
-        const canvasElement = document.getElementById('canvasElement');
-        const context = canvasElement.getContext('2d');
-        const qrCodeResult = document.getElementById('qrCodeResult');
-        const systolicBP = document.getElementById('systolicBP');
-        const diastolicBP = document.getElementById('diastolicBP');
-        const heartRate = document.getElementById('heartRate');
-        const messageDisplay = document.getElementById('messageDisplay');
+        let currentStream = null;
+        let currentMode = null; // 'qr' or 'medical'
 
-        let currentStream; // 用來儲存目前的影像串流，以便關閉
+        // DOM 元素
+        const qrScanBtn = document.getElementById('qrScanBtn');
+        const medicalScanBtn = document.getElementById('medicalScanBtn');
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const stopCameraBtn = document.getElementById('stopCameraBtn');
+        const processingStatus = document.getElementById('processingStatus');
+        const statusText = document.getElementById('statusText');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const qrResult = document.getElementById('qrResult');
+        const medicalResult = document.getElementById('medicalResult');
+        const testBtn = document.getElementById('testBtn');
 
-        // 啟動相機函數
-        async function startCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop()); // 關閉之前的串流
-            }
-            try {
-                // 嘗試使用後置鏡頭
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                videoElement.srcObject = stream;
-                videoElement.style.display = 'block';
-                currentStream = stream;
+        // 事件監聽器
+        qrScanBtn.addEventListener('click', () => startScanning('qr'));
+        medicalScanBtn.addEventListener('click', () => startScanning('medical'));
+        uploadBtn.addEventListener('click', () => imageInput.click());
+        imageInput.addEventListener('change', handleImageUpload);
+        captureBtn.addEventListener('click', captureImage);
+        stopCameraBtn.addEventListener('click', stopCamera);
+        testBtn.addEventListener('click', testRecognition);
 
-                await new Promise(resolve => {
-                    videoElement.onloadedmetadata = () => {
-                        canvasElement.width = videoElement.videoWidth;
-                        canvasElement.height = videoElement.videoHeight;
-                        videoElement.play();
-                        resolve();
-                    };
-                });
-                return stream;
-            } catch (err) {
-                console.error('無法啟動相機：', err);
-                messageDisplay.textContent = '錯誤：無法啟動相機。請確認已授權相機存取權限，並且您的網頁是透過 HTTPS 協定載入。';
-                return null;
-            }
-        }
-
-        // 停止相機函數
-        function stopCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-                videoElement.srcObject = null;
-                videoElement.style.display = 'none';
-                currentStream = null; // 清空串流變數
-            }
-        }
-
-        // 重置生理數據顯示
-        function resetBloodPressureDisplay() {
-            systolicBP.textContent = '尚無資料';
-            diastolicBP.textContent = '尚無資料';
-            heartRate.textContent = '尚無資料';
-        }
-
-        // 掃描 QR Code 函數
-        qrCodeScanButton.addEventListener('click', async () => {
-            stopCamera(); // 停止之前可能的相機流
-            messageDisplay.textContent = '掃描 QR Code 中，請將 QR Code 置於畫面中央...';
-            qrCodeResult.textContent = '掃描中...';
-            resetBloodPressureDisplay(); // 清空生理數據結果
-
-            const stream = await startCamera();
-            if (!stream) return;
-
-            function tick() {
-                if (!currentStream) return; // 如果相機已停止，則停止掃描循環
-
-                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-                    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-                    const imageData = context.getImageData(0, 0, canvasElement.width, canvasElement.height);
-                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                        inversionAttempts: "dontInvert",
+        // 開始掃描
+        async function startScanning(mode) {
+            currentMode = mode;
+            hideResults();
+            
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    currentStream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            facingMode: 'environment',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
                     });
+                    video.srcObject = currentStream;
+                    cameraContainer.classList.remove('hidden');
+                    uploadArea.classList.add('hidden');
+                    
+                    if (mode === 'qr') {
+                        startQRScanning();
+                    }
+                } catch (err) {
+                    console.error('無法訪問相機:', err);
+                    // 如果無法訪問相機，顯示文件上傳選項
+                    uploadArea.classList.remove('hidden');
+                    cameraContainer.classList.add('hidden');
+                }
+            } else {
+                // 瀏覽器不支持相機，顯示文件上傳選項
+                uploadArea.classList.remove('hidden');
+                cameraContainer.classList.add('hidden');
+            }
+        }
 
-                    if (code) {
-                        qrCodeResult.textContent = code.data;
-                        messageDisplay.textContent = 'QR Code 掃描完成！';
-                        stopCamera(); // 掃描到 QR Code 後停止相機
+        // QR Code 持續掃描
+        function startQRScanning() {
+            const scanQR = () => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const context = canvas.getContext('2d');
+                    context.drawImage(video, 0, 0);
+                    
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    
+                    if (code && code.data) {
+                        displayQRResult(code.data);
+                        stopCamera();
                         return;
                     }
                 }
-                requestAnimationFrame(tick); // 繼續掃描
+                
+                if (currentStream && currentMode === 'qr') {
+                    requestAnimationFrame(scanQR);
+                }
+            };
+            scanQR();
+        }
+
+        // 拍照
+        function captureImage() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                processImage(blob);
+            }, 'image/jpeg', 0.8);
+            
+            stopCamera();
+        }
+
+        // 停止相機
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
             }
-            tick();
+            cameraContainer.classList.add('hidden');
+            uploadArea.classList.add('hidden');
+        }
+
+        // 處理圖片上傳
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        }
+
+        // 處理圖片
+        async function processImage(imageSource) {
+            showProcessing('處理圖片中...');
+            
+            if (currentMode === 'qr') {
+                await processQRImage(imageSource);
+            } else if (currentMode === 'medical') {
+                await processMedicalImage(imageSource);
+            }
+            
+            hideProcessing();
+        }
+
+        // 處理 QR Code 圖片
+        async function processQRImage(imageSource) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const img = new Image();
+            
+            return new Promise((resolve) => {
+                img.onload = () => {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    context.drawImage(img, 0, 0);
+                    
+                    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+                    
+                    if (code && code.data) {
+                        displayQRResult(code.data);
+                    } else {
+                        alert('未找到 QR Code，請重試');
+                    }
+                    resolve();
+                };
+                
+                if (imageSource instanceof Blob) {
+                    img.src = URL.createObjectURL(imageSource);
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = e => img.src = e.target.result;
+                    reader.readAsDataURL(imageSource);
+                }
+            });
+        }
+
+        // 處理醫療設備圖片
+        async function processMedicalImage(imageSource) {
+            try {
+                statusText.textContent = 'OCR 辨識中...';
+                
+                const { data: { text } } = await Tesseract.recognize(
+                    imageSource,
+                    'eng+chi_tra',
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                statusText.textContent = `OCR 辨識中... ${Math.round(m.progress * 100)}%`;
+                            }
+                        }
+                    }
+                );
+                
+                parseMedicalData(text);
+            } catch (error) {
+                console.error('OCR 辨識失敗:', error);
+                alert('OCR 辨識失敗，請重試');
+            }
+        }
+
+        // 解析醫療數據
+        function parseMedicalData(text) {
+            const data = {
+                systolic: null,
+                diastolic: null,
+                pulse: null,
+                spo2: null,
+                glucose: null
+            };
+            
+            // 血壓辨識 (收縮壓/舒張壓)
+            const bpRegex = /(\d{2,3})\s*[\/\-]\s*(\d{2,3})/g;
+            const bpMatch = bpRegex.exec(text);
+            if (bpMatch) {
+                data.systolic = parseInt(bpMatch[1]);
+                data.diastolic = parseInt(bpMatch[2]);
+            }
+            
+            // 心率/脈搏辨識
+            const pulseRegex = /(?:pulse|heart|rate|bpm|脈搏|心率|心跳)[\s:]*(\d{2,3})/gi;
+            const pulseMatch = pulseRegex.exec(text);
+            if (pulseMatch) {
+                data.pulse = parseInt(pulseMatch[1]);
+            }
+            
+            // 數字匹配 (用於更廣泛的數值檢測)
+            const numbers = text.match(/\d{2,3}/g);
+            if (numbers && numbers.length >= 3) {
+                // 如果沒有通過正則找到血壓，嘗試從數字中推斷
+                if (!data.systolic && !data.diastolic) {
+                    const nums = numbers.map(n => parseInt(n)).filter(n => n >= 40 && n <= 250);
+                    if (nums.length >= 2) {
+                        nums.sort((a, b) => b - a); // 降序排列
+                        data.systolic = nums[0];
+                        data.diastolic = nums[1];
+                    }
+                }
+                
+                // 如果沒有找到心率，從剩餘數字中找
+                if (!data.pulse) {
+                    const pulseNums = numbers.map(n => parseInt(n)).filter(n => n >= 40 && n <= 200);
+                    if (pulseNums.length > 0) {
+                        data.pulse = pulseNums[pulseNums.length - 1]; // 通常心率是最後一個較小的數字
+                    }
+                }
+            }
+            
+            displayMedicalResult(data, text);
+        }
+
+        // 測試辨識功能
+        function testRecognition() {
+            const testData = {
+                systolic: 122,
+                diastolic: 78,
+                pulse: 66,
+                spo2: null,
+                glucose: null
+            };
+            
+            const testText = "測試數據: 血壓 122/78 mmHg, 心率 66 bpm";
+            displayMedicalResult(testData, testText);
+        }
+
+        // 顯示 QR Code 結果
+        function displayQRResult(qrData) {
+            document.getElementById('qrContent').textContent = qrData;
+            qrResult.classList.remove('hidden');
+            resultsContainer.classList.remove('hidden');
+        }
+
+        // 顯示醫療數據結果
+        function displayMedicalResult(data, rawText) {
+            // 血壓
+            if (data.systolic && data.diastolic) {
+                document.getElementById('systolic').textContent = data.systolic;
+                document.getElementById('diastolic').textContent = data.diastolic;
+                document.getElementById('bloodPressure').classList.remove('hidden');
+            }
+            
+            // 心率
+            if (data.pulse) {
+                document.getElementById('pulse').textContent = data.pulse;
+                document.getElementById('heartRate').classList.remove('hidden');
+            }
+            
+            // 血氧
+            if (data.spo2) {
+                document.getElementById('spo2').textContent = data.spo2;
+                document.getElementById('bloodOxygen').classList.remove('hidden');
+            }
+            
+            // 血糖
+            if (data.glucose) {
+                document.getElementById('glucose').textContent = data.glucose;
+                document.getElementById('bloodSugar').classList.remove('hidden');
+            }
+            
+            // 原始辨識文字
+            document.getElementById('ocrContent').textContent = rawText;
+            
+            medicalResult.classList.remove('hidden');
+            resultsContainer.classList.remove('hidden');
+        }
+
+        // 顯示處理狀態
+        function showProcessing(message) {
+            statusText.textContent = message;
+            processingStatus.classList.remove('hidden');
+        }
+
+        // 隱藏處理狀態
+        function hideProcessing() {
+            processingStatus.classList.add('hidden');
+        }
+
+        // 隱藏結果
+        function hideResults() {
+            resultsContainer.classList.add('hidden');
+            qrResult.classList.add('hidden');
+            medicalResult.classList.add('hidden');
+            // 隱藏所有醫療數據項目
+            document.getElementById('bloodPressure').classList.add('hidden');
+            document.getElementById('heartRate').classList.add('hidden');
+            document.getElementById('bloodOxygen').classList.add('hidden');
+            document.getElementById('bloodSugar').classList.add('hidden');
+        }
+
+        // 拖拽上傳功能
+        const uploadAreaDiv = document.querySelector('#uploadArea > div');
+        uploadAreaDiv.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadAreaDiv.classList.add('border-blue-500', 'bg-blue-50');
         });
 
-        // 掃描血壓數據函數 (OCR)
-        bloodPressureScanButton.addEventListener('click', async () => { // 更名為 bloodPressureScanButton
-            stopCamera(); // 停止之前可能的相機流
-            resetBloodPressureDisplay(); // 清空生理數據結果
-            messageDisplay.textContent = '相機已開啟，請將血壓計螢幕置於框內。3 秒後會自動截圖並進行辨識...';
+        uploadAreaDiv.addEventListener('dragleave', () => {
+            uploadAreaDiv.classList.remove('border-blue-500', 'bg-blue-50');
+        });
 
-            const stream = await startCamera();
-            if (!stream) return;
-
-            // 為了更穩定的 OCR，我們在截圖前等待一段時間，讓使用者調整畫面
-            setTimeout(async () => {
-                if (!currentStream) { // 如果使用者在此期間關閉了相機
-                    messageDisplay.textContent = '掃描已取消。';
-                    return;
-                }
-
-                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
-                    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-                    stopCamera(); // 截圖後停止相機
-
-                    try {
-                        messageDisplay.textContent = '正在進行 OCR 辨識血壓數據，請稍候... (這可能需要一些時間)';
-
-                        // **Tesseract.js OCR 處理**
-                        // 優化 OCR 設定：限制辨識字元為數字、點、斜線。
-                        // 未來可在此處替換為呼叫後端 API 的邏輯，例如：
-                        // const recognizedText = await sendImageToBackendForOCR(canvasElement.toDataURL('image/jpeg'));
-                        const { data: { text } } = await Tesseract.recognize(
-                            canvasElement,
-                            'eng', // 英文語言包，對數字辨識通常足夠
-                            {
-                                logger: m => {
-                                    if (m.status === 'recognizing text') {
-                                        messageDisplay.textContent = `辨識中... (${Math.round(m.progress * 100)}%)`;
-                                    } else {
-                                        console.log(m); // 輸出其他進度訊息到控制台
-                                    }
-                                },
-                                tessedit_char_whitelist: '0123456789./', // 僅辨識數字、點、斜線
-                            }
-                        );
-
-                        // **解析辨識結果為收縮壓、舒張壓、心率**
-                        // 移除所有非數字、非點、非斜線的字元，並將其替換為空格，方便後續分割
-                        const cleanText = text.replace(/[^0-9./]/g, ' ').trim();
-                        // 將多個空格替換為單個空格，然後按空格或斜線分割
-                        const rawNumbers = cleanText.split(/[\s/]+/).filter(n => n.length > 0 && !isNaN(n));
-
-                        console.log("OCR 原始文字:", text);
-                        console.log("清理後的數字陣列 (rawNumbers):", rawNumbers);
-
-                        // 將字串數字轉換為整數，並過濾掉不符合常理的極值
-                        const validNumbers = rawNumbers
-                            .map(numStr => parseInt(numStr, 10))
-                            .filter(num => !isNaN(num) && num >= 30 && num <= 300); // 一般血壓心率的合理範圍
-
-                        console.log("有效數字陣列 (validNumbers):", validNumbers);
-
-                        let sysVal = '未能辨識', diaVal = '未能辨識', hrVal = '未能辨識';
-
-                        // 嘗試解析：假設血壓計會顯示三個數字。
-                        // 這裡提供一個簡易的啟發式判斷邏輯，實際應用會更複雜
-                        if (validNumbers.length >= 3) {
-                            // 將數字按降序排列
-                            validNumbers.sort((a, b) => b - a);
-
-                            // 最常見的模式是：最大的兩個是血壓，剩下的是心率
-                            // 通常收縮壓 > 舒張壓 > 心率 (或 心率約在 60-100)
-                            sysVal = validNumbers[0] + ' mmHg';
-                            diaVal = validNumbers[1] + ' mmHg';
-                            hrVal = validNumbers[2] + ' bpm';
-
-                            // 簡單檢查：如果第三個數字（心率）異常大，可能辨識錯誤
-                            if (validNumbers[2] > 150) { // 假設心率很少超過150
-                                hrVal = '未能辨識 (心率可能錯誤)';
-                            }
-
-                        } else if (validNumbers.length === 2) {
-                            // 如果只有兩個數字，可能是收縮壓和舒張壓，或收縮壓和心率
-                            // 這裡假設是收縮壓和舒張壓
-                            validNumbers.sort((a, b) => b - a);
-                            sysVal = validNumbers[0] + ' mmHg';
-                            diaVal = validNumbers[1] + ' mmHg';
-                            messageDisplay.textContent += ' (僅辨識到血壓值，心率缺失)';
-
-                        } else if (validNumbers.length === 1) {
-                            // 如果只有一個數字，可能是收縮壓或心率
-                            sysVal = validNumbers[0] + ' mmHg (僅辨識到單一數值)';
-                            messageDisplay.textContent += ' (僅辨識到單一數值)';
-                        }
-
-
-                        systolicBP.textContent = sysVal;
-                        diastolicBP.textContent = diaVal;
-                        heartRate.textContent = hrVal;
-
-                        if (sysVal !== '未能辨識' || hrVal !== '未能辨識') {
-                            messageDisplay.textContent = '血壓數據辨識完成！';
-                        } else {
-                            messageDisplay.textContent = '未能從圖片中辨識出有效的血壓或心率數據。請重新嘗試。';
-                        }
-
-                    } catch (error) {
-                        console.error('OCR 辨識錯誤：', error);
-                        messageDisplay.textContent = 'OCR 辨識過程中發生錯誤。請檢查網路連接或重試。';
-                        resetBloodPressureDisplay();
-                    }
-                } else {
-                    messageDisplay.textContent = '無法獲取影像，請確保相機正常工作並有足夠光源。';
-                    resetBloodPressureDisplay();
-                    stopCamera();
-                }
-            }, 3000); // 等待 3 秒讓使用者調整位置
+        uploadAreaDiv.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadAreaDiv.classList.remove('border-blue-500', 'bg-blue-50');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processImage(files[0]);
+            }
         });
     </script>
-
 </body>
 </html>
