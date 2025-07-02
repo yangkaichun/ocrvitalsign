@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手機健康掃描</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            gap: 20px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #videoElement {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            display: none; /* 預設隱藏 */
+        }
+        #canvasElement {
+            display: none; /* 預設隱藏 */
+        }
+        .result-section {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .result-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .result-section p {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        .result-section strong {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>健康數據掃描器</h1>
+
+    <button id="qrCodeScanButton">掃描 QR Code</button>
+    <button id="bioDataScanButton">掃描生理數據 (血壓/血氧/血糖)</button>
+
+    <video id="videoElement" autoplay playsinline></video>
+    <canvas id="canvasElement"></canvas>
+
+    <div class="result-section">
+        <h3>掃描結果：</h3>
+        <p>QR Code 數據: <strong id="qrCodeResult">尚無資料</strong></p>
+        <p>生理數據: <strong id="bioDataResult">尚無資料</strong></p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
+
+    <script>
+        const qrCodeScanButton = document.getElementById('qrCodeScanButton');
+        const bioDataScanButton = document.getElementById('bioDataScanButton');
+        const videoElement = document.getElementById('videoElement');
+        const canvasElement = document.getElementById('canvasElement');
+        const context = canvasElement.getContext('2d');
+        const qrCodeResult = document.getElementById('qrCodeResult');
+        const bioDataResult = document.getElementById('bioDataResult');
+
+        let currentStream; // 用來儲存目前的影像串流，以便關閉
+
+        // 啟動相機函數
+        async function startCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop()); // 關閉之前的串流
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); // 後置鏡頭
+                videoElement.srcObject = stream;
+                videoElement.style.display = 'block';
+                currentStream = stream;
+
+                // 確保影片載入完成後才能讀取其尺寸
+                await new Promise(resolve => {
+                    videoElement.onloadedmetadata = () => {
+                        canvasElement.width = videoElement.videoWidth;
+                        canvasElement.height = videoElement.videoHeight;
+                        resolve();
+                    };
+                });
+
+                return stream;
+            } catch (err) {
+                console.error('無法啟動相機：', err);
+                alert('無法啟動相機。請確認已授權相機存取權限，並且您的網頁是透過 HTTPS 協定載入。');
+                return null;
+            }
+        }
+
+        // 停止相機函數
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                videoElement.srcObject = null;
+                videoElement.style.display = 'none';
+            }
+        }
+
+        // 掃描 QR Code 函數
+        qrCodeScanButton.addEventListener('click', async () => {
+            qrCodeResult.textContent = '掃描中...';
+            bioDataResult.textContent = '尚無資料'; // 清空之前的生理數據
+
+            const stream = await startCamera();
+            if (!stream) return;
+
+            function tick() {
+                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                    const imageData = context.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "dontInvert",
+                    });
+
+                    if (code) {
+                        qrCodeResult.textContent = code.data;
+                        stopCamera(); // 掃描到 QR Code 後停止相機
+                        return;
+                    }
+                }
+                requestAnimationFrame(tick); // 繼續掃描
+            }
+            tick();
+        });
+
+        // 掃描生理數據函數 (OCR)
+        bioDataScanButton.addEventListener('click', async () => {
+            bioDataResult.textContent = '辨識中...';
+            qrCodeResult.textContent = '尚無資料'; // 清空之前的 QR Code 數據
+
+            const stream = await startCamera();
+            if (!stream) return;
+
+            // 為了 OCR 辨識，我們通常會需要一張靜態的圖片
+            // 這裡的做法是先顯示影像流，然後讓使用者點擊或等待幾秒後自動截圖
+            alert('相機已開啟，請將生理數據畫面置於框內。');
+
+            // 簡單的延遲後自動截圖並辨識
+            setTimeout(async () => {
+                if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                    stopCamera(); // 截圖後停止相機
+
+                    try {
+                        bioDataResult.textContent = '正在進行 OCR 辨識，請稍候... (這可能需要一些時間)';
+                        // 使用 Tesseract.js 辨識數字
+                        const { data: { text } } = await Tesseract.recognize(
+                            canvasElement, // 直接傳入 canvas
+                            'eng', // 選擇語言，通常數字辨識用 'eng' (英文) 即可
+                            {
+                                logger: m => console.log(m) // 顯示進度
+                                // Tesseract.js 還有很多參數可以調整，例如圖片預處理
+                                // 建議針對實際的生理數據顯示畫面進行優化
+                                // 例如只辨識圖片中的特定區域 (rectangle)
+                                // 可參考 Tesseract.js 官方文件: https://tesseract.projectnaptha.com/
+                            }
+                        );
+
+                        // 簡單地從辨識結果中提取數字
+                        const numbers = text.match(/\d+(\.\d+)?/g); // 匹配整數或浮點數
+
+                        if (numbers && numbers.length > 0) {
+                            bioDataResult.textContent = numbers.join(', '); // 顯示所有找到的數字
+                        } else {
+                            bioDataResult.textContent = '未能辨識到數字，請確保數據清晰可見。原始文字: ' + text;
+                        }
+
+                    } catch (error) {
+                        console.error('OCR 辨識錯誤：', error);
+                        bioDataResult.textContent = 'OCR 辨識失敗。';
+                    }
+                } else {
+                    bioDataResult.textContent = '無法獲取影像進行辨識。';
+                    stopCamera();
+                }
+            }, 3000); // 等待 3 秒讓使用者調整位置
+        });
+    </script>
+
+</body>
+</html>
