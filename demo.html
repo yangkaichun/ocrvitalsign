@@ -239,38 +239,43 @@
                 updateUI();
 
                 try {
-                    // 嘗試獲取所有攝影機
-                    const devices = await Html5Qrcode.getCameras();
-                    let cameraId = null;
+                    // 使用 facingMode: { exact: "environment" } 來強制使用後置攝影機
+                    const config = { 
+                        fps: 10, 
+                        qrbox: { width: 250, height: 250 },
+                        facingMode: { exact: "environment" } // 嘗試使用後置攝影機
+                    };
 
-                    if (devices && devices.length) {
-                        // 優先尋找後置攝影機 (environment facing camera)
-                        const rearCamera = devices.find(
-                            device => device.label.toLowerCase().includes('back') || 
-                                      device.label.toLowerCase().includes('environment')
-                        );
+                    // Html5Qrcode.start 方法可以直接接受 facingMode 配置，
+                    // 這樣就不需要先呼叫 getCameras() 再判斷 cameraId。
+                    // 這樣寫更簡潔，且能更好地處理沒有明確標識的後置鏡頭的設備。
+                    await html5QrCode.start(
+                        { facingMode: { exact: "environment" } }, // 優先使用後置攝影機
+                        config, 
+                        onQrScanSuccess
+                    );
+                    console.log("嘗試啟動後置攝影機。");
 
-                        if (rearCamera) {
-                            cameraId = rearCamera.id;
-                            console.log("找到後置攝影機:", rearCamera.label, rearCamera.id);
-                        } else {
-                            // 如果沒有明確標識的後置攝影機，則使用第一個可用的攝影機
-                            // 注意：這可能是前置攝像頭，但為了確保功能至少能啟動，作為備用方案
-                            cameraId = devices[0].id;
-                            console.log("未找到明確後置攝影機，使用預設攝影機:", devices[0].label, devices[0].id);
-                        }
-                        
-                        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                        // 使用cameraId啟動掃描器
-                        await html5QrCode.start(cameraId, config, onQrScanSuccess);
-                    } else {
-                        throw new Error("沒有找到任何攝影機。請檢查裝置是否支援或已連接攝影機。");
-                    }
                 } catch (err) {
-                    console.error("無法啟動 QR Code 掃描器", err);
-                    statusElement.textContent = `錯誤：無法啟動攝影機。請檢查權限設定或裝置是否支援。${err.message}`;
-                    appState = 'INITIAL';
-                    updateUI();
+                    console.error("無法啟動 QR Code 掃描器，嘗試改用使用者預設攝影機。", err);
+                    statusElement.textContent = `錯誤：無法啟動後置攝影機。嘗試改用預設攝影機。${err.message}`;
+                    // 如果後置攝影機無法啟動（例如桌面瀏覽器或沒有後置鏡頭的設備），
+                    // 則嘗試使用第一個可用的攝影機。
+                    try {
+                        const devices = await Html5Qrcode.getCameras();
+                        if (devices && devices.length) {
+                            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                            await html5QrCode.start(devices[0].id, config, onQrScanSuccess);
+                            console.log("改用預設攝影機:", devices[0].label);
+                        } else {
+                             throw new Error("沒有找到任何攝影機。請檢查裝置是否支援或已連接攝影機。");
+                        }
+                    } catch (fallbackErr) {
+                        console.error("無法啟動任何攝影機。", fallbackErr);
+                        statusElement.textContent = `錯誤：無法啟動攝影機。請檢查權限設定或裝置是否支援。${fallbackErr.message}`;
+                        appState = 'INITIAL';
+                        updateUI();
+                    }
                 }
             }
 
@@ -357,7 +362,7 @@
                     const threshold = 128; // Tunable parameter
                     const color = gray > threshold ? 255 : 0;
                     
-                    data[i] = color;     // Red
+                    data[i] = color;      // Red
                     data[i + 1] = color; // Green
                     data[i + 2] = color; // Blue
                 }
