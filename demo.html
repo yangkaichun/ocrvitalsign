@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code 與血壓計掃描器</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 1rem;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+       .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+       .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #qr-reader {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+        }
+        #qr-reader-region {
+            position: relative;
+        }
+        #blood-pressure-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 30%;
+            border: 3px solid var(--danger-color);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            display: none; /* Initially hidden */
+        }
+       .controls,.results-container {
+            text-align: center;
+        }
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin: 0.5rem;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+        }
+       .result-item {
+            margin-bottom: 1rem;
+        }
+       .result-item h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--secondary-color);
+        }
+       .result-item p {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--success-color);
+            word-wrap: break-word;
+        }
+       .status {
+            margin-top: 1rem;
+            font-style: italic;
+            color: var(--secondary-color);
+        }
+       .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>整合式掃描器</h1>
+
+        <div class="card">
+            <div id="qr-reader"></div>
+            <div id="blood-pressure-overlay"></div>
+        </div>
+
+        <div id="controls" class="card controls">
+            <button id="start-scan-btn">1. 開始掃描 QR Code</button>
+            <button id="capture-bp-btn" class="hidden">2. 擷取血壓數值</button>
+            <button id="reset-btn" class="hidden">重新開始</button>
+        </div>
+
+        <div id="results-container" class="card results-container hidden">
+            <div id="qr-result" class="result-item hidden">
+                <h3>QR Code 內容</h3>
+                <p id="qr-result-text"></p>
+            </div>
+            <div id="bp-result" class="result-item hidden">
+                <h3>血壓計讀數</h3>
+                <p id="bp-result-text">處理中...</p>
+            </div>
+        </div>
+        
+        <p id="status" class="status">請先允許攝影機權限。</p>
+    </div>
+
+    <canvas id="ocr-canvas" style="display:none;"></canvas>
+
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const qrReaderElement = document.getElementById('qr-reader');
+            const bpOverlayElement = document.getElementById('blood-pressure-overlay');
+            const startScanBtn = document.getElementById('start-scan-btn');
+            const captureBpBtn = document.getElementById('capture-bp-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const resultsContainer = document.getElementById('results-container');
+            const qrResultDiv = document.getElementById('qr-result');
+            const qrResultText = document.getElementById('qr-result-text');
+            const bpResultDiv = document.getElementById('bp-result');
+            const bpResultText = document.getElementById('bp-result-text');
+            const statusElement = document.getElementById('status');
+            const ocrCanvas = document.getElementById('ocr-canvas');
+            const ocrCtx = ocrCanvas.getContext('2d', { willReadFrequently: true });
+
+            // --- State Management ---
+            let appState = 'INITIAL'; // INITIAL, SCANNING_QR, QR_SCANNED, PROCESSING_OCR, COMPLETE
+            let html5QrCode = null;
+            let qrResultData = null;
+            let tesseractWorker = null;
+
+            // --- Tesseract.js Worker Initialization ---
+            async function initializeTesseract() {
+                statusElement.textContent = '正在載入 OCR 引擎...';
+                // The URL to the gzipped custom traineddata file.
+                // This file should be hosted on a server.
+                // The 'ssd.traineddata' file from https://github.com/Shreeshrii/tessdata_ssd was gzipped.
+                const langPath = 'https://cdn.jsdelivr.net/gh/Shreeshrii/tessdata_ssd@main/';
+                
+                tesseractWorker = await Tesseract.createWorker('ssd', 1, {
+                    langPath: langPath,
+                    gzip: true,
+                    logger: m => {
+                        console.log(m);
+                        if (m.status === 'recognizing text') {
+                           statusElement.textContent = `OCR 辨識中... (${Math.round(m.progress * 100)}%)`;
+                        }
+                    },
+                });
+                statusElement.textContent = 'OCR 引擎已就緒。';
+            }
+            
+            initializeTesseract();
+
+            // --- UI Update Function ---
+            function updateUI() {
+                startScanBtn.classList.toggle('hidden', appState!== 'INITIAL');
+                captureBpBtn.classList.toggle('hidden', appState!== 'QR_SCANNED');
+                resetBtn.classList.toggle('hidden', appState!== 'COMPLETE');
+                resultsContainer.classList.toggle('hidden', appState === 'INITIAL' |
+
+| appState === 'SCANNING_QR');
+                
+                qrResultDiv.classList.toggle('hidden',!qrResultData);
+                if (qrResultData) {
+                    qrResultText.textContent = qrResultData;
+                }
+
+                bpResultDiv.classList.toggle('hidden', appState!== 'PROCESSING_OCR' && appState!== 'COMPLETE');
+                bpOverlayElement.style.display = (appState === 'QR_SCANNED' |
+
+| appState === 'PROCESSING_OCR')? 'block' : 'none';
+
+                switch(appState) {
+                    case 'INITIAL':
+                        statusElement.textContent = '請點擊按鈕開始掃描 QR Code。';
+                        break;
+                    case 'SCANNING_QR':
+                        statusElement.textContent = '請將 QR Code 對準掃描框。';
+                        break;
+                    case 'QR_SCANNED':
+                        statusElement.textContent = 'QR Code 掃描成功！現在請將血壓計螢幕對準紅色框線，然後點擊擷取。';
+                        break;
+                    case 'PROCESSING_OCR':
+                        statusElement.textContent = '正在處理血壓計影像...';
+                        bpResultText.textContent = '處理中...';
+                        break;
+                    case 'COMPLETE':
+                        statusElement.textContent = '掃描完成！';
+                        break;
+                }
+            }
+
+            // --- Event Listeners ---
+            startScanBtn.addEventListener('click', startQrScan);
+            captureBpBtn.addEventListener('click', captureAndProcessBP);
+            resetBtn.addEventListener('click', resetApp);
+
+            // --- Core Functions ---
+            function startQrScan() {
+                html5QrCode = new Html5Qrcode("qr-reader");
+                appState = 'SCANNING_QR';
+                updateUI();
+
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                html5QrCode.start({ facingMode: "environment" }, config, onQrScanSuccess)
+                   .catch(err => {
+                        console.error("無法啟動 QR Code 掃描器", err);
+                        statusElement.textContent = `錯誤：無法啟動攝影機。 ${err}`;
+                        appState = 'INITIAL';
+                        updateUI();
+                    });
+            }
+
+            function onQrScanSuccess(decodedText, decodedResult) {
+                if (appState!== 'SCANNING_QR') return; // Prevent multiple triggers
+                
+                console.log(`QR Code 掃描成功: ${decodedText}`);
+                qrResultData = decodedText;
+                appState = 'QR_SCANNED';
+
+                // IMPORTANT: Pause the scanner instead of clearing it to keep the camera stream active.
+                html5QrCode.pause(true);
+                updateUI();
+            }
+
+            async function captureAndProcessBP() {
+                appState = 'PROCESSING_OCR';
+                updateUI();
+                captureBpBtn.disabled = true;
+
+                try {
+                    const videoElement = document.querySelector('#qr-reader video');
+                    if (!videoElement) {
+                        throw new Error("找不到視訊元素。");
+                    }
+
+                    // 1. Capture and preprocess the image
+                    const processedCanvas = preprocessImage(videoElement);
+                    
+                    // 2. Perform OCR
+                    const { data: { text } } = await tesseractWorker.recognize(processedCanvas);
+                    console.log('OCR 原始結果:', text);
+
+                    // 3. Parse and display result
+                    const parsedResult = parseBPResult(text);
+                    bpResultText.textContent = parsedResult;
+
+                } catch (error) {
+                    console.error("OCR 處理失敗:", error);
+                    bpResultText.textContent = "辨識失敗，請重試。";
+                } finally {
+                    appState = 'COMPLETE';
+                    updateUI();
+                    captureBpBtn.disabled = false;
+                }
+            }
+            
+            function preprocessImage(videoElement) {
+                // Get dimensions from the overlay and video
+                const videoRect = videoElement.getBoundingClientRect();
+                const overlayRect = bpOverlayElement.getBoundingClientRect();
+
+                // Calculate crop area relative to the video's intrinsic size
+                const scaleX = videoElement.videoWidth / videoRect.width;
+                const scaleY = videoElement.videoHeight / videoRect.height;
+                
+                const sx = (overlayRect.left - videoRect.left) * scaleX;
+                const sy = (overlayRect.top - videoRect.top) * scaleY;
+                const sWidth = overlayRect.width * scaleX;
+                const sHeight = overlayRect.height * scaleY;
+
+                // Set canvas size to the cropped size
+                ocrCanvas.width = sWidth;
+                ocrCanvas.height = sHeight;
+
+                // Draw the cropped part of the video onto the canvas
+                ocrCtx.drawImage(videoElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+
+                // Get image data for manipulation
+                let imageData = ocrCtx.getImageData(0, 0, ocrCanvas.width, ocrCanvas.height);
+                let data = imageData.data;
+
+                // Image processing pipeline: Grayscale -> Contrast -> Binarization
+                for (let i = 0; i < data.length; i += 4) {
+                    // Grayscale (luminosity method)
+                    let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+                    // Contrast (simple method)
+                    const contrast = 1.5; // Tunable parameter
+                    gray = (gray - 128) * contrast + 128;
+                    gray = Math.max(0, Math.min(255, gray));
+
+                    // Binarization (simple threshold)
+                    const threshold = 128; // Tunable parameter
+                    const color = gray > threshold? 255 : 0;
+                    
+                    data[i] = color;     // Red
+                    data[i + 1] = color; // Green
+                    data[i + 2] = color; // Blue
+                }
+
+                // Put the processed data back onto the canvas
+                ocrCtx.putImageData(imageData, 0, 0);
+
+                return ocrCanvas;
+            }
+
+            function parseBPResult(text) {
+                // Clean the text: remove spaces, newlines, and common misread characters
+                const cleanedText = text.replace(/[\s\n\r]/g, '').replace(/o/gi, '0').replace(/l/gi, '1').replace(/s/gi, '5');
+                
+                // Try to find patterns like "120/80", "120 80", or just two numbers
+                const match = cleanedText.match(/(\d{2,3})[^\d]*(\d{2,3})/);
+                
+                if (match && match.length >= 3) {
+                    return `收縮壓: ${match} / 舒張壓: ${match}`;
+                }
+                
+                // If no clear pattern, just return the cleaned text for manual review
+                return `無法解析，原始辨識文字: "${cleanedText}"`;
+            }
+
+            function resetApp() {
+                if (html5QrCode) {
+                    html5QrCode.stop().then(() => {
+                        html5QrCode.clear();
+                        html5QrCode = null;
+                        console.log("掃描器已停止並清理。");
+                    }).catch(err => {
+                        console.error("停止掃描器失敗", err);
+                    });
+                }
+                
+                qrResultData = null;
+                appState = 'INITIAL';
+                updateUI();
+                bpResultText.textContent = '處理中...';
+            }
+
+            // Initial UI setup
+            updateUI();
+        });
+    </script>
+</body>
+</html>
