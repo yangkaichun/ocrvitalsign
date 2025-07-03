@@ -3,151 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code 與血壓計掃描器</title>
+    <title>QR Code 與血壓計掃描器 (優化版)</title>
     <style>
         :root {
-            --primary-color: #007bff;
-            --secondary-color: #6c757d;
-            --background-color: #f8f9fa;
-            --text-color: #212529;
-            --card-bg: #ffffff;
-            --border-color: #dee2e6;
-            --success-color: #28a745;
-            --danger-color: #dc3545;
+            --primary-color: #007bff; --secondary-color: #6c757d; --background-color: #f8f9fa;
+            --text-color: #212529; --card-bg: #ffffff; --border-color: #dee2e6;
+            --success-color: #28a745; --danger-color: #dc3545;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0;
-            padding: 1rem;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            margin: 0; padding: 1rem; background-color: var(--background-color); color: var(--text-color);
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
         }
-       .container {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        h1 {
-            color: var(--primary-color);
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
+       .container { width: 100%; max-width: 600px; margin: 0 auto; }
+        h1 { color: var(--primary-color); text-align: center; margin-bottom: 1.5rem; }
        .card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         #qr-reader {
-            width: 100%;
-            border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
-            overflow: hidden;
-            position: relative;
-            min-height: 250px; /* 確保在相機關閉時仍有空間 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: var(--secondary-color);
-            font-style: italic;
+            width: 100%; border: 1px solid var(--border-color); border-radius: 0.5rem;
+            overflow: hidden; position: relative; min-height: 250px;
+            display: flex; justify-content: center; align-items: center;
+            color: var(--secondary-color); font-style: italic; background-color: #e9ecef;
         }
         #qr-reader video {
-            display: block; /* 確保視頻元素可見 */
-            width: 100%; /* 讓影片填滿容器 */
-            height: auto; /* 保持比例 */
-            object-fit: cover; /* 確保影片覆蓋整個區域，可能裁剪邊緣 */
+            display: block; width: 100%; height: auto; object-fit: cover;
         }
         #blood-pressure-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 30%;
-            border: 3px solid var(--danger-color);
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-            border-radius: 10px;
-            display: none; /* Initially hidden */
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 80%; height: 30%;
+            border: 3px solid var(--danger-color); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            border-radius: 10px; display: none;
         }
-       .controls,.results-container {
-            text-align: center;
-        }
+       .controls,.results-container { text-align: center; }
         button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            border-radius: 0.25rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            margin: 0.5rem;
+            background-color: var(--primary-color); color: white; border: none;
+            padding: 0.75rem 1.5rem; font-size: 1rem; border-radius: 0.25rem;
+            cursor: pointer; transition: background-color 0.2s, opacity 0.2s; margin: 0.5rem;
         }
-        button:hover {
-            background-color: #0056b3;
-        }
-        button:disabled {
-            background-color: var(--secondary-color);
-            cursor: not-allowed;
-        }
-       .result-item {
-            margin-bottom: 1rem;
-        }
-       .result-item h3 {
-            margin: 0 0 0.5rem 0;
-            color: var(--secondary-color);
-        }
-       .result-item p {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--success-color);
-            word-wrap: break-word;
-        }
-       .status {
-            margin-top: 1rem;
-            font-style: italic;
-            color: var(--secondary-color);
-        }
-       .hidden {
-            display: none;
-        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: var(--secondary-color); cursor: not-allowed; opacity: 0.65; }
+       .result-item { margin-bottom: 1rem; }
+       .result-item h3 { margin: 0 0 0.5rem 0; color: var(--secondary-color); }
+       .result-item p { margin: 0; font-size: 1.2rem; font-weight: bold; color: var(--success-color); word-wrap: break-word; }
+       .status { margin-top: 1rem; font-style: italic; color: var(--secondary-color); min-height: 1.5em; text-align: center; }
+       .hidden { display: none; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>整合式掃描器</h1>
-
+        <h1>整合式掃描器 (優化版)</h1>
         <div class="card">
             <div id="qr-reader">相機預覽區</div>
             <div id="blood-pressure-overlay"></div>
         </div>
-
         <div id="controls" class="card controls">
             <button id="start-scan-btn">1. 開始掃描 QR Code</button>
-            <button id="open-bp-camera-btn" class="hidden">2. 擷取血壓數值</button>
-            <button id="capture-bp-value-btn" class="hidden">擷取</button> <button id="reset-btn" class="hidden">重新開始</button>
+            <button id="open-bp-camera-btn">2. 擷取血壓數值</button>
+            <button id="capture-bp-value-btn">擷取</button>
+            <button id="reset-btn">重新開始</button>
         </div>
-
-        <div id="results-container" class="card results-container hidden">
-            <div id="qr-result" class="result-item hidden">
+        <div id="results-container" class="card results-container">
+            <div id="qr-result" class="result-item">
                 <h3>QR Code 內容</h3>
                 <p id="qr-result-text"></p>
             </div>
-            <div id="bp-result" class="result-item hidden">
+            <div id="bp-result" class="result-item">
                 <h3>血壓計讀數</h3>
-                <p id="bp-result-text">處理中...</p>
+                <p id="bp-result-text"></p>
             </div>
         </div>
-        
-        <p id="status" class="status">請先允許攝影機權限。</p>
+        <p id="status" class="status">正在初始化應用程式...</p>
     </div>
 
     <canvas id="ocr-canvas" style="display:none;"></canvas>
@@ -156,376 +85,222 @@
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Element References ---
-            const qrReaderElement = document.getElementById('qr-reader');
-            const bpOverlayElement = document.getElementById('blood-pressure-overlay');
-            const startScanBtn = document.getElementById('start-scan-btn');
-            const openBpCameraBtn = document.getElementById('open-bp-camera-btn');
-            const captureBpValueBtn = document.getElementById('capture-bp-value-btn');
-            const resetBtn = document.getElementById('reset-btn');
-            const resultsContainer = document.getElementById('results-container');
-            const qrResultDiv = document.getElementById('qr-result');
-            const qrResultText = document.getElementById('qr-result-text');
-            const bpResultDiv = document.getElementById('bp-result');
-            const bpResultText = document.getElementById('bp-result-text');
-            const statusElement = document.getElementById('status');
-            const ocrCanvas = document.getElementById('ocr-canvas');
-            const ocrCtx = ocrCanvas.getContext('2d', { willReadFrequently: true });
+    document.addEventListener('DOMContentLoaded', () => {
 
-            // --- State Management ---
-            let appState = 'INITIAL'; // INITIAL, SCANNING_QR, QR_SCANNED, SCANNING_BP_CAMERA_OPENED, PROCESSING_OCR, COMPLETE
-            let html5QrCode = null;
-            let tesseractWorker = null; 
-            let qrResultData = null;
+        // ===================================================================
+        // == UIManager: Handles all direct DOM manipulation.
+        // ===================================================================
+        const UIManager = {
+            elements: {
+                qrReader: document.getElementById('qr-reader'),
+                bpOverlay: document.getElementById('blood-pressure-overlay'),
+                startScanBtn: document.getElementById('start-scan-btn'),
+                openBpCameraBtn: document.getElementById('open-bp-camera-btn'),
+                captureBpValueBtn: document.getElementById('capture-bp-value-btn'),
+                resetBtn: document.getElementById('reset-btn'),
+                resultsContainer: document.getElementById('results-container'),
+                qrResultDiv: document.getElementById('qr-result'),
+                qrResultText: document.getElementById('qr-result-text'),
+                bpResultDiv: document.getElementById('bp-result'),
+                bpResultText: document.getElementById('bp-result-text'),
+                status: document.getElementById('status'),
+                ocrCanvas: document.getElementById('ocr-canvas'),
+            },
+            getOcrContext: function() {
+                return this.elements.ocrCanvas.getContext('2d', { willReadFrequently: true });
+            },
+            updateUIForState: function(state, data = {}) {
+                const allButtons =;
+                allButtons.forEach(btn => { btn.classList.add('hidden'); btn.disabled = false; });
 
-            // --- Tesseract.js Worker Initialization ---
-            async function initializeTesseractWorker() {
-                if (tesseractWorker) {
-                    console.log("Tesseract Worker 已存在，無需重複初始化。");
+                this.elements.bpOverlay.style.display = 'none';
+                this.elements.resultsContainer.classList.add('hidden');
+                this.elements.qrResultDiv.classList.add('hidden');
+                this.elements.bpResultDiv.classList.add('hidden');
+
+                switch (state) {
+                    case 'IDLE':
+                        this.elements.startScanBtn.classList.remove('hidden');
+                        this.elements.qrReader.innerHTML = '相機預覽區';
+                        this.elements.status.textContent = '請點擊按鈕開始掃描 QR Code。';
+                        break;
+                    case 'INITIALIZING_QR':
+                        this.elements.startScanBtn.classList.remove('hidden');
+                        this.elements.startScanBtn.disabled = true;
+                        this.elements.status.textContent = '正在請求相機權限...';
+                        this.elements.qrReader.innerHTML = '';
+                        break;
+                    case 'SCANNING_QR':
+                        this.elements.status.textContent = '請將 QR Code 對準掃描框。';
+                        break;
+                    case 'AWAITING_OCR':
+                        this.elements.openBpCameraBtn.classList.remove('hidden');
+                        this.elements.resetBtn.classList.remove('hidden');
+                        this.elements.resultsContainer.classList.remove('hidden');
+                        this.elements.qrResultDiv.classList.remove('hidden');
+                        this.elements.qrResultText.textContent = data.qrData;
+                        this.elements.qrReader.innerHTML = '相機已關閉';
+                        this.elements.status.textContent = 'QR Code 掃描成功！請準備掃描血壓計。';
+                        break;
+                    case 'INITIALIZING_OCR':
+                        this.elements.openBpCameraBtn.classList.remove('hidden');
+                        this.elements.openBpCameraBtn.disabled = true;
+                        this.elements.resetBtn.classList.remove('hidden');
+                        this.elements.resultsContainer.classList.remove('hidden');
+                        this.elements.qrResultDiv.classList.remove('hidden');
+                        this.elements.status.textContent = '正在啟動相機以擷取血壓計...';
+                        this.elements.qrReader.innerHTML = '';
+                        break;
+                    case 'SCANNING_OCR':
+                        this.elements.captureBpValueBtn.classList.remove('hidden');
+                        this.elements.resetBtn.classList.remove('hidden');
+                        this.elements.resultsContainer.classList.remove('hidden');
+                        this.elements.qrResultDiv.classList.remove('hidden');
+                        this.elements.bpOverlay.style.display = 'block';
+                        this.elements.status.textContent = '請將血壓計螢幕對準紅框，然後點擊「擷取」。';
+                        break;
+                    case 'PROCESSING_OCR':
+                        this.elements.captureBpValueBtn.classList.remove('hidden');
+                        this.elements.captureBpValueBtn.disabled = true;
+                        this.elements.resetBtn.classList.remove('hidden');
+                        this.elements.resultsContainer.classList.remove('hidden');
+                        this.elements.qrResultDiv.classList.remove('hidden');
+                        this.elements.bpResultDiv.classList.remove('hidden');
+                        this.elements.bpResultText.textContent = '處理中...';
+                        this.elements.bpOverlay.style.display = 'block';
+                        this.elements.status.textContent = '正在辨識影像...';
+                        break;
+                    case 'COMPLETE':
+                        this.elements.resetBtn.classList.remove('hidden');
+                        this.elements.resultsContainer.classList.remove('hidden');
+                        this.elements.qrResultDiv.classList.remove('hidden');
+                        this.elements.bpResultDiv.classList.remove('hidden');
+                        this.elements.bpResultText.textContent = data.bpData;
+                        this.elements.qrReader.innerHTML = '掃描完成';
+                        this.elements.status.textContent = '所有掃描均已完成！';
+                        break;
+                    case 'ERROR':
+                        this.elements.resetBtn.classList.remove('hidden');
+                        this.elements.status.textContent = `發生錯誤: ${data.error}`;
+                        this.elements.qrReader.innerHTML = '錯誤';
+                        break;
+                }
+            },
+            updateOcrProgress: function(message) {
+                this.elements.status.textContent = message;
+            },
+            setBpResult: function(text) {
+                this.elements.bpResultText.textContent = text;
+            },
+        };
+
+        // ===================================================================
+        // == CameraManager: Encapsulates all html5-qrcode logic.
+        // ===================================================================
+        const CameraManager = {
+            html5QrCode: null,
+            isScanning: false,
+            init: function() {
+                this.html5QrCode = new Html5Qrcode(UIManager.elements.qrReader.id, { verbose: false });
+            },
+            async start(config, successCallback, errorCallback) {
+                if (this.isScanning) {
+                    console.warn("Camera is already scanning. Stop it before starting again.");
+                    await this.stop();
+                }
+                this.isScanning = true;
+                console.log("Starting camera with config:", config);
+                try {
+                    await this.html5QrCode.start(
+                        { facingMode: "environment" },
+                        config,
+                        successCallback,
+                        (errorMessage) => { /* Ignore non-match errors */ }
+                    );
+                } catch (err) {
+                    console.error("Failed to start camera:", err);
+                    this.isScanning = false;
+                    errorCallback(err);
+                }
+            },
+            async stop() {
+                if (!this.isScanning) {
+                    console.log("Camera is not scanning, no need to stop.");
                     return;
                 }
-                statusElement.textContent = '正在載入 OCR 引擎...';
-                const langPath = 'https://cdn.jsdelivr.net/gh/Shreeshrii/tessdata_ssd@main/';
-                
                 try {
-                    tesseractWorker = await Tesseract.createWorker('ssd', 1, {
-                        langPath: langPath,
-                        gzip: true,
+                    console.log("Stopping camera...");
+                    await this.html5QrCode.stop();
+                    this.isScanning = false;
+                    console.log("Camera stopped successfully.");
+                } catch (err) {
+                    console.error("Failed to stop camera gracefully:", err);
+                    // Force state change even if stop fails, to allow recovery.
+                    this.isScanning = false;
+                    // Attempt to clear any leftover video elements as a fallback
+                    const videoElement = UIManager.elements.qrReader.querySelector('video');
+                    if (videoElement && videoElement.srcObject) {
+                        videoElement.srcObject.getTracks().forEach(track => track.stop());
+                    }
+                    this.html5QrCode.clear();
+                }
+            },
+            captureFrame: function() {
+                const videoElement = UIManager.elements.qrReader.querySelector('video');
+                if (!videoElement |
+
+| videoElement.readyState < 2) {
+                    throw new Error("Video stream not available or not ready for capture.");
+                }
+                return videoElement;
+            }
+        };
+
+        // ===================================================================
+        // == OCRProcessor: Manages Tesseract.js worker and processing.
+        // ===================================================================
+        const OCRProcessor = {
+            worker: null,
+            isInitialized: false,
+            async init() {
+                if (this.isInitialized) return;
+                UIManager.updateOcrProgress('正在載入 OCR 引擎...');
+                try {
+                    this.worker = await Tesseract.createWorker('eng', 1, {
                         logger: m => {
                             if (m.status === 'recognizing text') {
-                                statusElement.textContent = `OCR 辨識中... (${Math.round(m.progress * 100)}%)`;
-                            } else if (m.status === 'loading eng.traineddata') {
-                                statusElement.textContent = `載入 OCR 數據... (${Math.round(m.progress * 100)}%)`;
+                                UIManager.updateOcrProgress(`OCR 辨識中... (${Math.round(m.progress * 100)}%)`);
                             }
                         },
                     });
-                    console.log("Tesseract OCR 引擎已就緒。");
-                    statusElement.textContent = 'OCR 引擎已就緒。';
-                } catch (error) {
-                    console.error("OCR 引擎載入失敗:", error);
-                    statusElement.textContent = `錯誤：OCR 引擎載入失敗。請檢查網路連接或稍後再試。`;
-                    tesseractWorker = null; 
-                }
-            }
-            
-            initializeTesseractWorker(); 
-
-            // --- UI Update Function ---
-            function updateUI() {
-                startScanBtn.classList.toggle('hidden', appState !== 'INITIAL');
-                openBpCameraBtn.classList.toggle('hidden', appState !== 'QR_SCANNED');
-                captureBpValueBtn.classList.toggle('hidden', appState !== 'SCANNING_BP_CAMERA_OPENED');
-                resetBtn.classList.toggle('hidden', appState !== 'COMPLETE');
-                resultsContainer.classList.toggle('hidden', appState === 'INITIAL' || appState === 'SCANNING_QR' || appState === 'SCANNING_BP_CAMERA_OPENED');
-                
-                qrResultDiv.classList.toggle('hidden', !qrResultData);
-                if (qrResultData) {
-                    qrResultText.textContent = qrResultData;
-                }
-
-                bpResultDiv.classList.toggle('hidden', appState !== 'PROCESSING_OCR' && appState !== 'COMPLETE');
-                
-                // 控制 QR Reader 顯示和覆蓋層
-                if (appState === 'SCANNING_QR' || appState === 'SCANNING_BP_CAMERA_OPENED' || appState === 'PROCESSING_OCR') {
-                    qrReaderElement.style.display = 'block'; 
-                    bpOverlayElement.style.display = (appState === 'SCANNING_BP_CAMERA_OPENED' || appState === 'PROCESSING_OCR') ? 'block' : 'none';
-                    
-                    // 只有當 Html5Qrcode 預計會插入 video 元素時才清空佔位文字
-                    // 如果沒有 video 元素且仍顯示佔位文字，則清空
-                    if (!qrReaderElement.querySelector('video') && qrReaderElement.innerHTML === '相機預覽區') {
-                        qrReaderElement.innerHTML = ''; 
-                    }
-
-                } else { // 相機應該關閉時
-                    // 確保在切換到非攝影機狀態時，所有相機資源被釋放，並且 UI 回到初始狀態
-                    if (html5QrCode && html5QrCode.isScanning) {
-                        html5QrCode.stop().then(() => {
-                            // 顯式停止 MediaStream 軌道
-                            const videoElement = qrReaderElement.querySelector('video');
-                            if (videoElement && videoElement.srcObject) {
-                                videoElement.srcObject.getTracks().forEach(track => track.stop());
-                                videoElement.srcObject = null;
-                            }
-                            html5QrCode.clear(); // 清理 DOM 元素
-                            html5QrCode = null;
-                            console.log("UI update: 掃描器已停止並清理。");
-                            qrReaderElement.innerHTML = '相機預覽區'; 
-                            qrReaderElement.style.display = 'flex';
-                            bpOverlayElement.style.display = 'none';
-                        }).catch(err => console.error("UI update stop camera error:", err));
-                    } else if (!qrReaderElement.querySelector('video')) { // 如果沒有 video 元素，直接恢復佔位符
-                        qrReaderElement.innerHTML = '相機預覽區'; 
-                        qrReaderElement.style.display = 'flex';
-                        bpOverlayElement.style.display = 'none';
-                    }
-                }
-
-                // 根據 appState 更新狀態文字
-                switch(appState) {
-                    case 'INITIAL':
-                        statusElement.textContent = '請點擊按鈕開始掃描 QR Code。';
-                        break;
-                    case 'SCANNING_QR':
-                        statusElement.textContent = '請將 QR Code 對準掃描框。';
-                        break;
-                    case 'QR_SCANNED':
-                        statusElement.textContent = 'QR Code 掃描成功！請點擊「擷取血壓數值」按鈕開啟相機。';
-                        break;
-                    case 'SCANNING_BP_CAMERA_OPENED':
-                        statusElement.textContent = '相機已開啟，請將血壓計螢幕對準紅色框線，然後點擊「擷取」按鈕。';
-                        break;
-                    case 'PROCESSING_OCR':
-                        statusElement.textContent = '正在處理血壓計影像...';
-                        bpResultText.textContent = '處理中...';
-                        break;
-                    case 'COMPLETE':
-                        statusElement.textContent = '掃描完成！';
-                        break;
-                }
-            }
-
-            // --- Event Listeners ---
-            startScanBtn.addEventListener('click', startQrScan);
-            openBpCameraBtn.addEventListener('click', openBpCamera);
-            captureBpValueBtn.addEventListener('click', captureAndProcessBP);
-            resetBtn.addEventListener('click', resetApp);
-
-            // --- Core Functions ---
-
-            /**
-             * 輔助函數：啟動攝影機，且**強制只使用後置鏡頭**。
-             * @param {Object} config - Html5Qrcode.start 的配置對象 (fps, qrbox 等)
-             * @param {function} onScanSuccess - 掃描成功回調 (例如 QR 碼掃描成功，或僅表示相機成功啟動)
-             * @param {function} onScanError - 掃描錯誤回調 (相機啟動失敗等)
-             * @returns {Promise<boolean>} - 如果相機成功啟動則為 true，否則為 false
-             */
-            async function startRearCamera(config, onScanSuccess, onScanError) {
-                // 如果 html5QrCode 實例存在且正在掃描，先停止並清理
-                if (html5QrCode && html5QrCode.isScanning) {
-                    try {
-                        console.log("偵測到正在運行中的掃描器，嘗試停止並清理舊實例...");
-                        await html5QrCode.stop();
-                        const videoElement = qrReaderElement.querySelector('video');
-                        if (videoElement && videoElement.srcObject) {
-                            videoElement.srcObject.getTracks().forEach(track => track.stop());
-                            videoElement.srcObject = null;
-                        }
-                        html5QrCode.clear(); 
-                        html5QrCode = null;
-                        console.log("舊掃描器已成功停止並清理。");
-                    } catch (e) {
-                        console.warn("停止舊掃描器實例時發生錯誤:", e);
-                    }
-                }
-                
-                // 重新創建 Html5Qrcode 實例，確保從乾淨狀態開始
-                // 這一步是關鍵，確保每次都是新的掃描器實例
-                html5QrCode = new Html5Qrcode("qr-reader");
-
-                try {
-                    statusElement.textContent = '正在啟動後置攝影機...';
-                    // 強制使用後置鏡頭
-                    await html5QrCode.start(
-                        { facingMode: { exact: "environment" } }, 
-                        config, 
-                        onScanSuccess, // 這裡將 onScanSuccess 傳遞給 Html5Qrcode.start
-                        onScanError 
-                    );
-                    console.log("後置攝影機成功啟動。");
-                    return true; 
+                    await this.worker.setParameters({
+                        tessedit_char_whitelist: '0123456789/SYSPUL', // Whitelist for digits, slash, and common labels
+                    });
+                    this.isInitialized = true;
+                    console.log("Tesseract worker initialized successfully.");
                 } catch (err) {
-                    console.error("無法啟動後置攝影機，錯誤詳情:", err);
-                    statusElement.textContent = `錯誤：無法啟動後置攝影機。請確認設備有後置鏡頭且已授權使用。${err.message || err.name || '未知錯誤'}`;
-                    
-                    if (html5QrCode) { // 如果啟動失敗，清理預覽區並重置實例
-                        try {
-                            html5QrCode.clear(); 
-                            html5QrCode = null;
-                        } catch (cleanErr) {
-                            console.error("啟動失敗時清理失敗:", cleanErr);
-                        }
-                    }
-                    return false; 
+                    console.error("Tesseract worker initialization failed:", err);
+                    this.isInitialized = false;
+                    throw new Error("OCR 引擎載入失敗。");
                 }
-            }
-
-            async function startQrScan() {
-                // 檢查 appState 是否為 INITIAL，避免重複啟動
-                if (appState !== 'INITIAL') {
-                    console.warn("QR 掃描已在進行或狀態不正確，不重複啟動。");
-                    return;
+            },
+            async recognize(videoElement) {
+                if (!this.isInitialized) {
+                    await this.init();
                 }
+                const canvas = this.preprocessImage(videoElement);
+                const { data: { text } } = await this.worker.recognize(canvas);
+                console.log('OCR Raw Result:', text);
+                return this.parseBPResult(text);
+            },
+            preprocessImage(videoElement) {
+                const canvas = UIManager.elements.ocrCanvas;
+                const ctx = UIManager.getOcrContext();
+                const overlay = UIManager.elements.bpOverlay;
 
-                appState = 'SCANNING_QR';
-                updateUI(); // 立即更新 UI 以顯示正確的狀態信息
-                statusElement.textContent = '正在請求攝影機權限...';
-
-                const config = { 
-                    fps: 10, // 掃描幀率
-                    qrbox: { width: 250, height: 250 }, // QR 碼掃描框大小
-                };
-                
-                // 直接嘗試啟動後置攝影機，並傳入 onQrScanSuccess 和錯誤回調
-                // onQrScanSuccess 會在掃描成功後關閉相機
-                const cameraStarted = await startRearCamera(
-                    config, 
-                    onQrScanSuccess, 
-                    (qrError) => { // 攝影機啟動失敗或掃描錯誤時的回調
-                        console.error("QR Code 掃描器無法啟動，因為後置鏡頭無法使用或掃描錯誤:", qrError);
-                        statusElement.textContent = `錯誤：QR 掃描器需要後置鏡頭，但無法啟動。請確認授權。${qrError.message || qrError.name || '未知錯誤'}`;
-                        appState = 'INITIAL'; // 回到初始狀態
-                        updateUI();
-                    }
-                );
-
-                if (cameraStarted) {
-                    // 相機成功啟動後，Html5Qrcode 內部會自動開始掃描，onQrScanSuccess 將被觸發
-                    statusElement.textContent = '請將 QR Code 對準掃描框。';
-                }
-            }
-
-            async function onQrScanSuccess(decodedText, decodedResult) {
-                // 此回調僅在 QR 碼被掃描到時觸發一次
-                if (appState !== 'SCANNING_QR') {
-                    console.warn("QR 掃描已成功，但 appState 不正確，跳過處理。");
-                    return; 
-                }
-                
-                console.log(`QR Code 掃描成功: ${decodedText}`);
-                qrResultData = decodedText;
-                
-                // QR Code 掃描成功後立即停止相機
-                if (html5QrCode) {
-                    try {
-                        console.log("QR Code 掃描完成，準備關閉相機。");
-                        await html5QrCode.stop();
-                        const videoElement = qrReaderElement.querySelector('video');
-                        if (videoElement && videoElement.srcObject) {
-                            videoElement.srcObject.getTracks().forEach(track => track.stop());
-                            videoElement.srcObject = null;
-                        }
-                        html5QrCode.clear(); 
-                        html5QrCode = null; 
-                        console.log("QR Code 掃描完成，相機已關閉。");
-                    } catch (err) {
-                        console.error("停止 QR 掃描器失敗:", err);
-                    }
-                }
-                appState = 'QR_SCANNED'; 
-                updateUI();
-            }
-
-            async function openBpCamera() {
-                if (appState !== 'QR_SCANNED') {
-                    console.warn("血壓計相機開啟狀態不正確。");
-                    return;
-                }
-                appState = 'SCANNING_BP_CAMERA_OPENED'; 
-                updateUI(); // 立即更新 UI 顯示相機已開啟等待擷取
-                captureBpValueBtn.disabled = true; 
-
-                const config = { 
-                    fps: 1, // OCR 不需要高幀率，降低功耗
-                    qrbox: { width: qrReaderElement.offsetWidth, height: qrReaderElement.offsetHeight }, // 讓 OCR 覆蓋整個預覽區
-                };
-
-                // 嘗試啟動後置攝影機，用於 OCR 模式
-                const cameraStarted = await startRearCamera(
-                    config, 
-                    // 在 OCR 模式下，相機啟動後不需要觸發任何「掃描成功」的回調
-                    (decodedText, decodedResult) => { console.log("OCR 模式下不應觸發 QR 碼掃描成功，僅表示相機串流活躍。"); },
-                    (err) => { // 錯誤回調
-                        console.error("血壓計相機啟動失敗:", err);
-                        statusElement.textContent = `無法開啟相機進行OCR。錯誤: ${err.message || err.name || '未知錯誤'}`;
-                        appState = 'QR_SCANNED'; 
-                        updateUI();
-                        captureBpValueBtn.disabled = false;
-                    }
-                );
-
-                if (cameraStarted) {
-                    statusElement.textContent = '相機已開啟，請將血壓計螢幕對準紅色框線，然後點擊「擷取」按鈕。';
-                    captureBpValueBtn.disabled = false; 
-                } else {
-                    statusElement.textContent = '無法啟動相機進行血壓計掃描。';
-                    appState = 'QR_SCANNED'; 
-                    updateUI();
-                    captureBpValueBtn.disabled = false;
-                }
-            }
-
-            async function captureAndProcessBP() {
-                if (appState !== 'SCANNING_BP_CAMERA_OPENED') {
-                    console.warn("狀態不正確，無法擷取血壓數值。");
-                    return;
-                }
-
-                appState = 'PROCESSING_OCR';
-                updateUI();
-                captureBpValueBtn.disabled = true; 
-
-                try {
-                    // 確保 Tesseract Worker 已初始化
-                    if (!tesseractWorker) {
-                        statusElement.textContent = 'OCR 引擎未就緒，正在嘗試重新載入...';
-                        await initializeTesseractWorker(); 
-                        if (!tesseractWorker) {
-                            throw new Error("OCR 引擎無法載入。");
-                        }
-                    }
-
-                    const videoElement = document.querySelector('#qr-reader video');
-                    if (!videoElement || videoElement.readyState < 2) { 
-                        console.warn("視訊元素尚未就緒，嘗試等待或重新確保串流。");
-                        await new Promise(resolve => setTimeout(resolve, 500)); // 給予短暫等待時間
-                        if (!videoElement || videoElement.readyState < 2) {
-                            throw new Error("視訊串流無法穩定，無法擷取畫面。");
-                        }
-                    }
-
-                    // 1. Capture and preprocess the image
-                    const processedCanvas = preprocessImage(videoElement);
-                    
-                    // 2. Perform OCR
-                    statusElement.textContent = '正在進行 OCR 辨識...';
-                    const { data: { text } } = await tesseractWorker.recognize(processedCanvas);
-                    console.log('OCR 原始結果:', text);
-
-                    // 3. Parse and display result
-                    const parsedResult = parseBPResult(text);
-                    bpResultText.textContent = parsedResult;
-
-                } catch (error) {
-                    console.error("OCR 處理失敗:", error);
-                    bpResultText.textContent = `辨識失敗，請重試。錯誤: ${error.message || error.name || '未知錯誤'}`;
-                } finally {
-                    // OCR 處理完成後關閉相機
-                    if (html5QrCode) {
-                        try {
-                            console.log("OCR 處理完成，準備關閉相機。");
-                            await html5QrCode.stop();
-                            const videoElement = qrReaderElement.querySelector('video');
-                            if (videoElement && videoElement.srcObject) {
-                                videoElement.srcObject.getTracks().forEach(track => track.stop());
-                                videoElement.srcObject = null;
-                            }
-                            html5QrCode.clear();
-                            html5QrCode = null;
-                            console.log("血壓計 OCR 完成，相機已關閉。");
-                        } catch (err) {
-                            console.error("停止 OCR 掃描器失敗:", err);
-                        }
-                    }
-                    appState = 'COMPLETE';
-                    updateUI();
-                }
-            }
-            
-            function preprocessImage(videoElement) {
                 const videoRect = videoElement.getBoundingClientRect();
-                const overlayRect = bpOverlayElement.getBoundingClientRect();
-
+                const overlayRect = overlay.getBoundingClientRect();
+                
                 const scaleX = videoElement.videoWidth / videoRect.width;
                 const scaleY = videoElement.videoHeight / videoRect.height;
                 
@@ -534,70 +309,195 @@
                 const sWidth = overlayRect.width * scaleX;
                 const sHeight = overlayRect.height * scaleY;
 
-                ocrCanvas.width = sWidth;
-                ocrCanvas.height = sHeight;
+                canvas.width = sWidth;
+                canvas.height = sHeight;
 
-                ocrCtx.drawImage(videoElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-
-                let imageData = ocrCtx.getImageData(0, 0, ocrCanvas.width, ocrCanvas.height);
+                ctx.drawImage(videoElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+                
+                let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let data = imageData.data;
 
+                // Grayscale, Contrast, and Binarization
                 for (let i = 0; i < data.length; i += 4) {
                     let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                    const contrast = 1.5; 
+                    const contrast = 2.0;
                     gray = (gray - 128) * contrast + 128;
                     gray = Math.max(0, Math.min(255, gray));
-                    const threshold = 128; 
-                    const color = gray > threshold ? 255 : 0;
-                    
-                    data[i] = color;      
-                    data[i + 1] = color; 
-                    data[i + 2] = color; 
+                    const threshold = 150;
+                    const color = gray > threshold? 255 : 0;
+                    data[i] = data[i + 1] = data[i + 2] = color;
                 }
+                ctx.putImageData(imageData, 0, 0);
+                
+                // Morphological Dilation to bridge gaps in 7-segment display
+                // This is a simplified dilation. For production, a library might be better.
+                // We will skip this complex implementation in pure JS for brevity but note its importance.
+                // The contrast/binarization above is the most critical first step.
 
-                ocrCtx.putImageData(imageData, 0, 0);
-
-                return ocrCanvas;
-            }
-
-            function parseBPResult(text) {
+                return canvas;
+            },
+            parseBPResult(text) {
                 const cleanedText = text.replace(/[\s\n\r]/g, '').replace(/o/gi, '0').replace(/l/gi, '1').replace(/s/gi, '5');
-                const match = cleanedText.match(/(\d{2,3})[^\d]*(\d{2,3})/);
-                
+                const match = cleanedText.match(/(\d{2,3})\/?(\d{2,3})/);
                 if (match && match.length >= 3) {
-                    return `收縮壓: ${match[1]} / 舒張壓: ${match[2]}`;
+                    return `收縮壓: ${match} / 舒張壓: ${match}`;
                 }
-                
                 return `無法解析，原始辨識文字: "${cleanedText}"`;
+            },
+            async terminate() {
+                if (this.worker) {
+                    await this.worker.terminate();
+                    this.worker = null;
+                    this.isInitialized = false;
+                    console.log("Tesseract worker terminated.");
+                }
             }
+        };
 
-            async function resetApp() {
-                if (html5QrCode) {
-                    try {
-                        console.log("重置：準備停止掃描器。");
-                        await html5QrCode.stop();
-                        const videoElement = qrReaderElement.querySelector('video');
-                        if (videoElement && videoElement.srcObject) {
-                            videoElement.srcObject.getTracks().forEach(track => track.stop());
-                            videoElement.srcObject = null;
-                        }
-                        html5QrCode.clear();
-                        html5QrCode = null;
-                        console.log("重置：掃描器已停止並清理。");
-                    } catch (err) {
-                        console.error("重置時停止掃描器失敗:", err);
-                    }
+        // ===================================================================
+        // == Finite State Machine (FSM): The central controller.
+        // ===================================================================
+        const AppFSM = {
+            currentState: 'IDLE',
+            qrData: null,
+            transitions: {
+                IDLE: {
+                    START_QR_SCAN: 'INITIALIZING_QR'
+                },
+                INITIALIZING_QR: {
+                    CAMERA_STARTED: 'SCANNING_QR',
+                    FAIL: 'ERROR',
+                    RESET: 'IDLE'
+                },
+                SCANNING_QR: {
+                    QR_SUCCESS: 'AWAITING_OCR',
+                    RESET: 'IDLE'
+                },
+                AWAITING_OCR: {
+                    START_OCR_SCAN: 'INITIALIZING_OCR',
+                    RESET: 'IDLE'
+                },
+                INITIALIZING_OCR: {
+                    CAMERA_STARTED: 'SCANNING_OCR',
+                    FAIL: 'ERROR',
+                    RESET: 'IDLE'
+                },
+                SCANNING_OCR: {
+                    CAPTURE: 'PROCESSING_OCR',
+                    RESET: 'IDLE'
+                },
+                PROCESSING_OCR: {
+                    OCR_SUCCESS: 'COMPLETE',
+                    OCR_FAIL: 'SCANNING_OCR', // Allow retry
+                    RESET: 'IDLE'
+                },
+                COMPLETE: {
+                    RESET: 'IDLE'
+                },
+                ERROR: {
+                    RESET: 'IDLE'
+                }
+            },
+            async dispatch(action, payload = {}) {
+                const nextState = this.transitions?.[action];
+                if (!nextState) {
+                    console.warn(`Invalid transition: from ${this.currentState} with action ${action}`);
+                    return;
                 }
                 
-                qrResultData = null;
-                appState = 'INITIAL';
-                updateUI();
-                bpResultText.textContent = '處理中...';
-            }
+                console.log(`Transition: ${this.currentState} -> ${nextState} (Action: ${action})`);
+                this.currentState = nextState;
+                UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
 
-            // Initial UI setup
-            updateUI();
-        });
+                // --- Handle state entry logic ---
+                switch (this.currentState) {
+                    case 'INITIALIZING_QR':
+                        CameraManager.start(
+                            { fps: 10, qrbox: { width: 250, height: 250 } },
+                            (decodedText, decodedResult) => {
+                                if (this.currentState === 'SCANNING_QR') { // Ensure we only process if in correct state
+                                    this.qrData = decodedText;
+                                    this.dispatch('QR_SUCCESS');
+                                }
+                            },
+                            (err) => this.dispatch('FAIL', { error: '無法啟動 QR 掃描相機。' })
+                        ).then(() => {
+                            if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
+                        });
+                        break;
+
+                    case 'SCANNING_QR':
+                        // Stop camera on success is handled by the success callback above
+                        break;
+                        
+                    case 'AWAITING_OCR':
+                        await CameraManager.stop();
+                        break;
+
+                    case 'INITIALIZING_OCR':
+                        CameraManager.start(
+                            { fps: 5 }, // Lower FPS for OCR is fine
+                            () => {}, // No success callback needed for OCR mode
+                            (err) => this.dispatch('FAIL', { error: '無法啟動血壓計掃描相機。' })
+                        ).then(() => {
+                            if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
+                        });
+                        break;
+
+                    case 'PROCESSING_OCR':
+                        try {
+                            const videoElement = CameraManager.captureFrame();
+                            const bpData = await OCRProcessor.recognize(videoElement);
+                            await CameraManager.stop();
+                            this.dispatch('OCR_SUCCESS', { bpData });
+                        } catch (err) {
+                            console.error("OCR process failed:", err);
+                            UIManager.setBpResult(`辨識失敗: ${err.message}`);
+                            this.dispatch('OCR_FAIL');
+                        }
+                        break;
+
+                    case 'IDLE':
+                        await CameraManager.stop();
+                        await OCRProcessor.terminate();
+                        this.qrData = null;
+                        // Reset UI fields
+                        UIManager.elements.qrResultText.textContent = '';
+                        UIManager.elements.bpResultText.textContent = '';
+                        break;
+
+                    case 'ERROR':
+                        await CameraManager.stop();
+                        break;
+                }
+            }
+        };
+
+        // ===================================================================
+        // == Event Listeners: Connect UI to the FSM.
+        // ===================================================================
+        UIManager.elements.startScanBtn.addEventListener('click', () => AppFSM.dispatch('START_QR_SCAN'));
+        UIManager.elements.openBpCameraBtn.addEventListener('click', () => AppFSM.dispatch('START_OCR_SCAN'));
+        UIManager.elements.captureBpValueBtn.addEventListener('click', () => AppFSM.dispatch('CAPTURE'));
+        UIManager.elements.resetBtn.addEventListener('click', () => AppFSM.dispatch('RESET'));
+
+        // ===================================================================
+        // == Application Initialization
+        // ===================================================================
+        async function main() {
+            UIManager.updateUIForState('IDLE');
+            CameraManager.init();
+            // Pre-initialize OCR worker for faster first use
+            try {
+                await OCRProcessor.init();
+                UIManager.updateOcrProgress(''); // Clear loading message
+            } catch (err) {
+                AppFSM.dispatch('FAIL', { error: err.message });
+            }
+        }
+
+        main();
+    });
     </script>
 </body>
 </html>
