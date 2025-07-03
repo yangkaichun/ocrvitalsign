@@ -288,16 +288,27 @@
                 this.isScanning = true;
                 console.log("Starting camera with config:", config);
                 try {
-                    await this.html5QrCode.start(
-                        { facingMode: "environment" },
-                        config,
-                        successCallback,
-                        (errorMessage) => { /* Ignore non-match errors */ }
-                    );
+                    // 檢查可用的相機 (這對偵錯很有幫助)
+                    const devices = await Html5Qrcode.getCameras();
+                    if (devices && devices.length) {
+                        // 嘗試使用環境（後置）相機，如果沒有就用第一個
+                        const cameraId = devices.find(device => device.label.toLowerCase().includes('back'))?.id || devices[0].id;
+                        
+                        await this.html5QrCode.start(
+                            cameraId, // 使用找到的 cameraId
+                            config,
+                            successCallback,
+                            (errorMessage) => { /* Ignore non-match errors for QR, or log for BP if needed */ }
+                        );
+                        console.log("Camera started successfully with ID:", cameraId);
+                    } else {
+                        throw new Error("沒有偵測到任何相機設備。");
+                    }
                 } catch (err) {
                     console.error("Failed to start camera:", err);
                     this.isScanning = false;
-                    errorCallback(err);
+                    // 更具體的錯誤回報
+                    errorCallback(new Error(`無法啟動相機: ${err.name || '未知錯誤'}. ${err.message || ''}. 請檢查相機權限或裝置。`));
                 }
             },
             async stop() {
@@ -312,9 +323,9 @@
                     console.log("Camera stopped successfully.");
                 } catch (err) {
                     console.error("Failed to stop camera gracefully:", err);
-                    // Force state change even if stop fails, to allow recovery.
+                    // 強制狀態改變，即使停止失敗，以允許恢復。
                     this.isScanning = false;
-                    // Attempt to clear any leftover video elements as a fallback
+                    // 嘗試清理任何殘留的視訊元素作為備用方案
                     const videoElement = UIManager.elements.qrReader.querySelector('video');
                     if (videoElement && videoElement.srcObject) {
                         videoElement.srcObject.getTracks().forEach(track => track.stop());
@@ -324,9 +335,8 @@
             },
             captureFrame: function() {
                 const videoElement = UIManager.elements.qrReader.querySelector('video');
-                // 修正：將位元或運算子 `|` 改為邏輯或運算子 `||`
                 if (!videoElement || videoElement.readyState < 2) {
-                    throw new Error("Video stream not available or not ready for capture.");
+                    throw new Error("視訊流不可用或尚未準備好擷取影像。");
                 }
                 return videoElement;
             }
@@ -342,17 +352,17 @@
                 if (this.isInitialized) return;
                 UIManager.updateOcrProgress('正在載入 OCR 引擎...');
                 try {
-                    // 修正：指定 Tesseract.js 的核心路徑，這對於某些伺服器配置是必要的
                     this.worker = await Tesseract.createWorker('eng', 1, {
                         logger: m => {
                             if (m.status === 'recognizing text') {
                                 UIManager.updateOcrProgress(`OCR 辨識中... (${Math.round(m.progress * 100)}%)`);
                             }
                         },
-                        // corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.4/tesseract-core.wasm', // 如果遇到 Cross-Origin 問題可以嘗試加上這行
+                        // 如果遇到 CORS 錯誤，或 tesseract.js-core 無法載入，可能需要指定 corePath
+                        // corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.4/tesseract-core.wasm',
                     });
                     await this.worker.setParameters({
-                        tessedit_char_whitelist: '0123456789/SYSPUL', // Whitelist for digits, slash, and common labels
+                        tessedit_char_whitelist: '0123456789/SYSPUL', // 數字, 斜線, 及常見標籤
                     });
                     this.isInitialized = true;
                     console.log("Tesseract worker initialized successfully.");
@@ -368,7 +378,7 @@
                 }
                 const canvas = this.preprocessImage(videoElement);
                 const { data: { text } } = await this.worker.recognize(canvas);
-                console.log('OCR Raw Result:', text);
+                console.log('OCR 原始結果:', text);
                 return this.parseBPResult(text);
             },
             preprocessImage(videoElement) {
@@ -379,38 +389,41 @@
                 const videoRect = videoElement.getBoundingClientRect();
                 const overlayRect = overlay.getBoundingClientRect();
                 
-                // 計算相機畫面與 overlay 在影片中的實際像素座標和尺寸
-                // 修正：考慮頁面滾動，使用 window.scrollY/scrollX
                 const scrollX = window.scrollX || window.pageXOffset;
                 const scrollY = window.scrollY || window.pageYOffset;
 
-                const sx = (overlayRect.left + scrollX - videoRect.left) * (videoElement.videoWidth / videoRect.width);
-                const sy = (overlayRect.top + scrollY - videoRect.top) * (videoElement.videoHeight / videoRect.height);
-                const sWidth = overlayRect.width * (videoElement.videoWidth / videoRect.width);
-                const sHeight = overlayRect.height * (videoElement.videoHeight / videoRect.height);
+                // 根據視訊元素和疊層的相對位置，計算裁剪區域在視訊流中的實際像素座標
+                const scaleX = videoElement.videoWidth / videoRect.width;
+                const scaleY = videoElement.videoHeight / videoRect.height;
+                
+                // 確保 overlayRect.left 和 .top 是相對於 videoRect 的，並考慮滾動
+                const sx = (overlayRect.left + scrollX - (videoRect.left + scrollX)) * scaleX;
+                const sy = (overlayRect.top + scrollY - (videoRect.top + scrollY)) * scaleY;
+                
+                const sWidth = overlayRect.width * scaleX;
+                const sHeight = overlayRect.height * scaleY;
 
                 canvas.width = sWidth;
                 canvas.height = sHeight;
 
-                // 確保截取的區域在影片範圍內，避免負值或超出
+                // 繪製時確保源區域不超出影片邊界
                 const finalSx = Math.max(0, sx);
                 const finalSy = Math.max(0, sy);
                 const finalSWidth = Math.min(sWidth, videoElement.videoWidth - finalSx);
                 const finalSHeight = Math.min(sHeight, videoElement.videoHeight - finalSy);
 
-
-                ctx.drawImage(videoElement, finalSx, finalSy, finalSWidth, finalSHeight, 0, 0, sWidth, sHeight);
+                ctx.drawImage(videoElement, finalSx, finalSy, finalSWidth, finalSHeight, 0, 0, canvas.width, canvas.height);
                 
                 let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let data = imageData.data;
 
-                // Grayscale, Contrast, and Binarization
+                // 灰度化、對比度增強和二值化
                 for (let i = 0; i < data.length; i += 4) {
                     let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                    const contrast = 2.0; // 增加對比度以提高辨識度
+                    const contrast = 2.5; // 提高對比度以改善數字辨識
                     gray = (gray - 128) * contrast + 128;
                     gray = Math.max(0, Math.min(255, gray));
-                    const threshold = 150; // 二值化閾值
+                    const threshold = 160; // 調整閾值可能有所幫助
                     const color = gray > threshold? 255 : 0;
                     data[i] = data[i + 1] = data[i + 2] = color;
                 }
@@ -419,13 +432,14 @@
                 return canvas;
             },
             parseBPResult(text) {
-                // 修正：更 robust 的解析邏輯，處理更多 OCR 可能的錯誤
-                // 移除所有空白符和換行符，將常見的誤識別字母替換為數字
+                // 更健壯的解析邏輯，處理更多 OCR 可能的錯誤
                 const cleanedText = text.replace(/[\s\n\r]/g, '')
-                                          .replace(/o|O/g, '0') // O/o 替換為 0
-                                          .replace(/l|I/g, '1') // l/I 替換為 1
-                                          .replace(/s|S/g, '5') // s/S 替換為 5
-                                          .replace(/B/g, '8'); // B 替換為 8
+                                          .replace(/o|O/g, '0') 
+                                          .replace(/l|I/g, '1') 
+                                          .replace(/s|S/g, '5') 
+                                          .replace(/B/g, '8')
+                                          .replace(/PUL/g, '') // 移除 PULS 或 PULS
+                                          .replace(/SYS/g, ''); // 移除 SYS
 
                 // 嘗試匹配 "數字/數字" 模式，例如 "120/80"
                 let match = cleanedText.match(/(\d{2,3})\/?(\d{2,3})/);
@@ -456,7 +470,7 @@
         };
 
         // ===================================================================
-        // == Finite State Machine (FSM): The central controller.
+        // == 有限狀態機 (FSM): 核心控制器.
         // ===================================================================
         const AppFSM = {
             currentState: 'IDLE',
@@ -521,17 +535,19 @@
                                     this.dispatch('QR_SUCCESS');
                                 }
                             },
-                            (err) => this.dispatch('FAIL', { error: '無法啟動 QR 掃描相機。' })
+                            (err) => {
+                                // QR 碼掃描失敗的回調，但通常我們會忽略不符合格式的錯誤
+                                // 只有當相機本身啟動失敗時，才觸發 AppFSM 的 FAIL 動作
+                            }
                         ).then(() => {
                             if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
                         }).catch(err => {
-                            console.error("QR Camera start promise rejected:", err);
-                            this.dispatch('FAIL', { error: '啟動 QR 相機失敗。' });
+                            console.error("QR 相機啟動 Promise 拒絕:", err);
+                            this.dispatch('FAIL', { error: err.message || '啟動 QR 相機失敗。' });
                         });
                         break;
 
                     case 'SCANNING_QR':
-                        // 掃描成功後停止相機的邏輯已在回調中處理
                         break;
                         
                     case 'AWAITING_OCR':
@@ -542,12 +558,17 @@
                         CameraManager.start(
                             { fps: 5 }, // OCR 模式下較低的 FPS 即可
                             () => {}, // OCR 模式不需要成功回調
-                            (err) => this.dispatch('FAIL', { error: '無法啟動血壓計掃描相機。' })
+                            (err) => {
+                                // 修正：這裡的錯誤回調需要觸發 FSM 的 FAIL 動作
+                                console.error("血壓計相機啟動失敗回調:", err);
+                                this.dispatch('FAIL', { error: err.message || '無法啟動血壓計掃描相機。' });
+                            }
                         ).then(() => {
                             if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
                         }).catch(err => {
-                            console.error("BP Camera start promise rejected:", err);
-                            this.dispatch('FAIL', { error: '啟動血壓計相機失敗。' });
+                            // 修正：這裡的 Promise catch 也要觸發 FSM 的 FAIL 動作
+                            console.error("血壓計相機啟動 Promise 拒絕:", err);
+                            this.dispatch('FAIL', { error: err.message || '無法啟動血壓計掃描相機。' });
                         });
                         break;
 
@@ -555,13 +576,12 @@
                         try {
                             const videoElement = CameraManager.captureFrame();
                             const bpData = await OCRProcessor.recognize(videoElement);
-                            // 修正：OCR 完成後停止相機
                             await CameraManager.stop(); 
                             this.dispatch('OCR_SUCCESS', { bpData });
                         } catch (err) {
                             console.error("OCR 處理失敗:", err);
                             UIManager.setBpResult(`辨識失敗: ${err.message}`);
-                            this.dispatch('OCR_FAIL');
+                            this.dispatch('OCR_FAIL'); // 回到 SCANNING_OCR 狀態，允許用戶重試
                         }
                         break;
 
@@ -569,7 +589,6 @@
                         await CameraManager.stop();
                         await OCRProcessor.terminate();
                         this.qrData = null;
-                        // 重置 UI 顯示
                         UIManager.elements.qrResultText.textContent = '';
                         UIManager.elements.bpResultText.textContent = '';
                         break;
@@ -595,10 +614,9 @@
         async function main() {
             UIManager.updateUIForState('IDLE');
             CameraManager.init();
-            // 預先初始化 OCR worker 以加快首次使用速度
             try {
                 await OCRProcessor.init();
-                UIManager.updateOcrProgress(''); // 清除載入訊息
+                UIManager.updateOcrProgress(''); 
             } catch (err) {
                 AppFSM.dispatch('FAIL', { error: err.message });
             }
