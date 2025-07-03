@@ -3,59 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code 與血壓計掃描器 (修正版)</title>
+    <title>QR Code 與血壓計掃描器 (優化版)</title>
     <style>
         :root {
-            --primary-color: #007bff; --secondary-color: #6c757d; --background-color: #f8f9fa;
-            --text-color: #212529; --card-bg: #ffffff; --border-color: #dee2e6;
-            --success-color: #28a745; --danger-color: #dc3545;
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0; padding: 1rem; background-color: var(--background-color); color: var(--text-color);
-            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
-      .container { width: 100%; max-width: 600px; margin: 0 auto; }
-        h1 { color: var(--primary-color); text-align: center; margin-bottom: 1.5rem; }
-      .card {
-            background-color: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1rem;
+       .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+       .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         #qr-reader {
-            width: 100%; border: 1px solid var(--border-color); border-radius: 0.5rem;
-            overflow: hidden; position: relative; min-height: 250px;
-            display: flex; justify-content: center; align-items: center;
-            color: var(--secondary-color); font-style: italic; background-color: #e9ecef;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            position: relative;
+            min-height: 250px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--secondary-color);
+            font-style: italic;
+            background-color: #e9ecef;
         }
         #qr-reader video {
-            display: block; width: 100%; height: auto; object-fit: cover;
+            display: block;
+            width: 100%;
+            height: auto;
+            object-fit: cover;
         }
         #blood-pressure-overlay {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); width: 80%; height: 30%;
-            border: 3px solid var(--danger-color); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
-            border-radius: 10px; display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 30%;
+            border: 3px solid var(--danger-color);
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            display: none;
         }
-      .controls,.results-container { text-align: center; }
+       .controls, .results-container {
+            text-align: center;
+        }
         button {
-            background-color: var(--primary-color); color: white; border: none;
-            padding: 0.75rem 1.5rem; font-size: 1rem; border-radius: 0.25rem;
-            cursor: pointer; transition: background-color 0.2s, opacity 0.2s; margin: 0.5rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            margin: 0.5rem;
         }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: var(--secondary-color); cursor: not-allowed; opacity: 0.65; }
-      .result-item { margin-bottom: 1rem; }
-      .result-item h3 { margin: 0 0 0.5rem 0; color: var(--secondary-color); }
-      .result-item p { margin: 0; font-size: 1.2rem; font-weight: bold; color: var(--success-color); word-wrap: break-word; }
-      .status { margin-top: 1rem; font-style: italic; color: var(--secondary-color); min-height: 1.5em; text-align: center; }
-      .hidden { display: none; }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: var(--secondary-color);
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+       .result-item {
+            margin-bottom: 1rem;
+        }
+       .result-item h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--secondary-color);
+        }
+       .result-item p {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--success-color);
+            word-wrap: break-word;
+        }
+       .status {
+            margin-top: 1rem;
+            font-style: italic;
+            color: var(--secondary-color);
+            min-height: 1.5em;
+            text-align: center;
+        }
+       .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>整合式掃描器 (修正版)</h1>
+        <h1>整合式掃描器 (優化版)</h1>
         <div class="card">
             <div id="qr-reader">相機預覽區</div>
             <div id="blood-pressure-overlay"></div>
@@ -81,14 +153,14 @@
 
     <canvas id="ocr-canvas" style="display:none;"></canvas>
 
-    <script src="[https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js](https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js)"></script>
-    <script src="[https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js](https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js)"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
 
         // ===================================================================
-        // == UIManager: 處理所有 DOM 操作
+        // == UIManager: Handles all direct DOM manipulation.
         // ===================================================================
         const UIManager = {
             elements: {
@@ -110,7 +182,12 @@
                 return this.elements.ocrCanvas.getContext('2d', { willReadFrequently: true });
             },
             updateUIForState: function(state, data = {}) {
-                const allButtons =;
+                const allButtons = [
+                    this.elements.startScanBtn,
+                    this.elements.openBpCameraBtn,
+                    this.elements.captureBpValueBtn,
+                    this.elements.resetBtn
+                ];
                 allButtons.forEach(btn => { btn.classList.add('hidden'); btn.disabled = false; });
 
                 this.elements.bpOverlay.style.display = 'none';
@@ -148,7 +225,6 @@
                         this.elements.resetBtn.classList.remove('hidden');
                         this.elements.resultsContainer.classList.remove('hidden');
                         this.elements.qrResultDiv.classList.remove('hidden');
-                        this.elements.qrResultText.textContent = data.qrData;
                         this.elements.status.textContent = '正在啟動相機以擷取血壓計...';
                         this.elements.qrReader.innerHTML = '';
                         break;
@@ -157,7 +233,6 @@
                         this.elements.resetBtn.classList.remove('hidden');
                         this.elements.resultsContainer.classList.remove('hidden');
                         this.elements.qrResultDiv.classList.remove('hidden');
-                        this.elements.qrResultText.textContent = data.qrData;
                         this.elements.bpOverlay.style.display = 'block';
                         this.elements.status.textContent = '請將血壓計螢幕對準紅框，然後點擊「擷取」。';
                         break;
@@ -167,7 +242,6 @@
                         this.elements.resetBtn.classList.remove('hidden');
                         this.elements.resultsContainer.classList.remove('hidden');
                         this.elements.qrResultDiv.classList.remove('hidden');
-                        this.elements.qrResultText.textContent = data.qrData;
                         this.elements.bpResultDiv.classList.remove('hidden');
                         this.elements.bpResultText.textContent = '處理中...';
                         this.elements.bpOverlay.style.display = 'block';
@@ -177,7 +251,6 @@
                         this.elements.resetBtn.classList.remove('hidden');
                         this.elements.resultsContainer.classList.remove('hidden');
                         this.elements.qrResultDiv.classList.remove('hidden');
-                        this.elements.qrResultText.textContent = data.qrData;
                         this.elements.bpResultDiv.classList.remove('hidden');
                         this.elements.bpResultText.textContent = data.bpData;
                         this.elements.qrReader.innerHTML = '掃描完成';
@@ -199,7 +272,7 @@
         };
 
         // ===================================================================
-        // == CameraManager: 封裝所有 html5-qrcode 邏輯
+        // == CameraManager: Encapsulates all html5-qrcode logic.
         // ===================================================================
         const CameraManager = {
             html5QrCode: null,
@@ -209,59 +282,58 @@
             },
             async start(config, successCallback, errorCallback) {
                 if (this.isScanning) {
-                    console.warn("相機已在掃描中，請先停止再重新啟動。");
+                    console.warn("Camera is already scanning. Stop it before starting again.");
                     await this.stop();
                 }
-                console.log("正在啟動相機，設定:", config);
+                this.isScanning = true;
+                console.log("Starting camera with config:", config);
                 try {
                     await this.html5QrCode.start(
                         { facingMode: "environment" },
                         config,
                         successCallback,
-                        (errorMessage) => { /* 忽略 QR code 未找到的錯誤 */ }
+                        (errorMessage) => { /* Ignore non-match errors */ }
                     );
-                    this.isScanning = true;
-                    console.log("相機啟動成功。");
                 } catch (err) {
-                    console.error("啟動相機失敗:", err);
+                    console.error("Failed to start camera:", err);
                     this.isScanning = false;
                     errorCallback(err);
                 }
             },
             async stop() {
-                if (!this.isScanning ||!this.html5QrCode) {
-                    console.log("相機未在掃描中，無需停止。");
+                if (!this.isScanning) {
+                    console.log("Camera is not scanning, no need to stop.");
                     return;
                 }
                 try {
-                    console.log("正在停止相機...");
+                    console.log("Stopping camera...");
                     await this.html5QrCode.stop();
                     this.isScanning = false;
-                    console.log("相機已成功停止。");
+                    console.log("Camera stopped successfully.");
                 } catch (err) {
-                    console.error("無法正常停止相機:", err);
+                    console.error("Failed to stop camera gracefully:", err);
+                    // Force state change even if stop fails, to allow recovery.
                     this.isScanning = false;
-                    // Fallback: 嘗試清理殘留的 video 元素
-                    try {
-                        this.html5QrCode.clear();
-                    } catch (clearErr) {
-                        console.error("停止失敗後，清理也失敗:", clearErr);
+                    // Attempt to clear any leftover video elements as a fallback
+                    const videoElement = UIManager.elements.qrReader.querySelector('video');
+                    if (videoElement && videoElement.srcObject) {
+                        videoElement.srcObject.getTracks().forEach(track => track.stop());
                     }
+                    this.html5QrCode.clear();
                 }
             },
             captureFrame: function() {
                 const videoElement = UIManager.elements.qrReader.querySelector('video');
-                if (!videoElement |
-
-| videoElement.readyState < 2) {
-                    throw new Error("影片串流尚未就緒，無法擷取畫面。");
+                // 修正：將位元或運算子 `|` 改為邏輯或運算子 `||`
+                if (!videoElement || videoElement.readyState < 2) {
+                    throw new Error("Video stream not available or not ready for capture.");
                 }
                 return videoElement;
             }
         };
 
         // ===================================================================
-        // == OCRProcessor: 管理 Tesseract.js worker 和影像處理
+        // == OCRProcessor: Manages Tesseract.js worker and processing.
         // ===================================================================
         const OCRProcessor = {
             worker: null,
@@ -270,20 +342,22 @@
                 if (this.isInitialized) return;
                 UIManager.updateOcrProgress('正在載入 OCR 引擎...');
                 try {
+                    // 修正：指定 Tesseract.js 的核心路徑，這對於某些伺服器配置是必要的
                     this.worker = await Tesseract.createWorker('eng', 1, {
                         logger: m => {
                             if (m.status === 'recognizing text') {
                                 UIManager.updateOcrProgress(`OCR 辨識中... (${Math.round(m.progress * 100)}%)`);
                             }
                         },
+                        // corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@4.0.4/tesseract-core.wasm', // 如果遇到 Cross-Origin 問題可以嘗試加上這行
                     });
                     await this.worker.setParameters({
-                        tessedit_char_whitelist: '0123456789/SYSPUL',
+                        tessedit_char_whitelist: '0123456789/SYSPUL', // Whitelist for digits, slash, and common labels
                     });
                     this.isInitialized = true;
-                    console.log("Tesseract worker 初始化成功。");
+                    console.log("Tesseract worker initialized successfully.");
                 } catch (err) {
-                    console.error("Tesseract worker 初始化失敗:", err);
+                    console.error("Tesseract worker initialization failed:", err);
                     this.isInitialized = false;
                     throw new Error("OCR 引擎載入失敗。");
                 }
@@ -294,7 +368,7 @@
                 }
                 const canvas = this.preprocessImage(videoElement);
                 const { data: { text } } = await this.worker.recognize(canvas);
-                console.log('OCR 原始結果:', text);
+                console.log('OCR Raw Result:', text);
                 return this.parseBPResult(text);
             },
             preprocessImage(videoElement) {
@@ -305,29 +379,38 @@
                 const videoRect = videoElement.getBoundingClientRect();
                 const overlayRect = overlay.getBoundingClientRect();
                 
-                const scaleX = videoElement.videoWidth / videoRect.width;
-                const scaleY = videoElement.videoHeight / videoRect.height;
-                
-                const sx = (overlayRect.left - videoRect.left) * scaleX;
-                const sy = (overlayRect.top - videoRect.top) * scaleY;
-                const sWidth = overlayRect.width * scaleX;
-                const sHeight = overlayRect.height * scaleY;
+                // 計算相機畫面與 overlay 在影片中的實際像素座標和尺寸
+                // 修正：考慮頁面滾動，使用 window.scrollY/scrollX
+                const scrollX = window.scrollX || window.pageXOffset;
+                const scrollY = window.scrollY || window.pageYOffset;
+
+                const sx = (overlayRect.left + scrollX - videoRect.left) * (videoElement.videoWidth / videoRect.width);
+                const sy = (overlayRect.top + scrollY - videoRect.top) * (videoElement.videoHeight / videoRect.height);
+                const sWidth = overlayRect.width * (videoElement.videoWidth / videoRect.width);
+                const sHeight = overlayRect.height * (videoElement.videoHeight / videoRect.height);
 
                 canvas.width = sWidth;
                 canvas.height = sHeight;
 
-                ctx.drawImage(videoElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+                // 確保截取的區域在影片範圍內，避免負值或超出
+                const finalSx = Math.max(0, sx);
+                const finalSy = Math.max(0, sy);
+                const finalSWidth = Math.min(sWidth, videoElement.videoWidth - finalSx);
+                const finalSHeight = Math.min(sHeight, videoElement.videoHeight - finalSy);
+
+
+                ctx.drawImage(videoElement, finalSx, finalSy, finalSWidth, finalSHeight, 0, 0, sWidth, sHeight);
                 
                 let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let data = imageData.data;
 
-                // 灰階、增強對比度、二值化
+                // Grayscale, Contrast, and Binarization
                 for (let i = 0; i < data.length; i += 4) {
                     let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                    const contrast = 2.0;
+                    const contrast = 2.0; // 增加對比度以提高辨識度
                     gray = (gray - 128) * contrast + 128;
                     gray = Math.max(0, Math.min(255, gray));
-                    const threshold = 150;
+                    const threshold = 150; // 二值化閾值
                     const color = gray > threshold? 255 : 0;
                     data[i] = data[i + 1] = data[i + 2] = color;
                 }
@@ -336,12 +419,30 @@
                 return canvas;
             },
             parseBPResult(text) {
-                const cleanedText = text.replace(/[\s\n\r]/g, '').replace(/o/gi, '0').replace(/l/gi, '1').replace(/s/gi, '5');
-                // **FIXED**: Correctly capture groups from the regex match
-                const match = cleanedText.match(/(\d{2,3})\/?(\d{2,3})/);
+                // 修正：更 robust 的解析邏輯，處理更多 OCR 可能的錯誤
+                // 移除所有空白符和換行符，將常見的誤識別字母替換為數字
+                const cleanedText = text.replace(/[\s\n\r]/g, '')
+                                          .replace(/o|O/g, '0') // O/o 替換為 0
+                                          .replace(/l|I/g, '1') // l/I 替換為 1
+                                          .replace(/s|S/g, '5') // s/S 替換為 5
+                                          .replace(/B/g, '8'); // B 替換為 8
+
+                // 嘗試匹配 "數字/數字" 模式，例如 "120/80"
+                let match = cleanedText.match(/(\d{2,3})\/?(\d{2,3})/);
                 if (match && match.length >= 3) {
                     return `收縮壓: ${match[1]} / 舒張壓: ${match[2]}`;
                 }
+
+                // 如果沒有找到 "數字/數字" 模式，嘗試查找獨立的數字
+                const numbers = cleanedText.match(/\d{2,3}/g);
+                if (numbers && numbers.length >= 2) {
+                    // 假設前兩個是收縮壓和舒張壓
+                    return `收縮壓: ${numbers[0]} / 舒張壓: ${numbers[1]}`;
+                } else if (numbers && numbers.length === 1) {
+                    // 如果只有一個數字，可能是只識別出一個值
+                    return `辨識到單一數值: ${numbers[0]} (可能不完整)`;
+                }
+                
                 return `無法解析，原始辨識文字: "${cleanedText}"`;
             },
             async terminate() {
@@ -349,87 +450,113 @@
                     await this.worker.terminate();
                     this.worker = null;
                     this.isInitialized = false;
-                    console.log("Tesseract worker 已終止。");
+                    console.log("Tesseract worker terminated.");
                 }
             }
         };
 
         // ===================================================================
-        // == Finite State Machine (FSM): 中央控制器
+        // == Finite State Machine (FSM): The central controller.
         // ===================================================================
         const AppFSM = {
             currentState: 'IDLE',
             qrData: null,
             transitions: {
-                IDLE:           { START_QR_SCAN: 'INITIALIZING_QR' },
-                INITIALIZING_QR:{ CAMERA_STARTED: 'SCANNING_QR', FAIL: 'ERROR', RESET: 'IDLE' },
-                SCANNING_QR:    { QR_SUCCESS: 'AWAITING_OCR', RESET: 'IDLE' },
-                AWAITING_OCR:   { START_OCR_SCAN: 'INITIALIZING_OCR', RESET: 'IDLE' },
-                INITIALIZING_OCR:{ CAMERA_STARTED: 'SCANNING_OCR', FAIL: 'ERROR', RESET: 'IDLE' },
-                SCANNING_OCR:   { CAPTURE: 'PROCESSING_OCR', RESET: 'IDLE' },
-                PROCESSING_OCR: { OCR_SUCCESS: 'COMPLETE', OCR_FAIL: 'SCANNING_OCR', RESET: 'IDLE' },
-                COMPLETE:       { RESET: 'IDLE' },
-                ERROR:          { RESET: 'IDLE' }
+                IDLE: {
+                    START_QR_SCAN: 'INITIALIZING_QR'
+                },
+                INITIALIZING_QR: {
+                    CAMERA_STARTED: 'SCANNING_QR',
+                    FAIL: 'ERROR',
+                    RESET: 'IDLE'
+                },
+                SCANNING_QR: {
+                    QR_SUCCESS: 'AWAITING_OCR',
+                    RESET: 'IDLE'
+                },
+                AWAITING_OCR: {
+                    START_OCR_SCAN: 'INITIALIZING_OCR',
+                    RESET: 'IDLE'
+                },
+                INITIALIZING_OCR: {
+                    CAMERA_STARTED: 'SCANNING_OCR',
+                    FAIL: 'ERROR',
+                    RESET: 'IDLE'
+                },
+                SCANNING_OCR: {
+                    CAPTURE: 'PROCESSING_OCR',
+                    RESET: 'IDLE'
+                },
+                PROCESSING_OCR: {
+                    OCR_SUCCESS: 'COMPLETE',
+                    OCR_FAIL: 'SCANNING_OCR', // 允許重試
+                    RESET: 'IDLE'
+                },
+                COMPLETE: {
+                    RESET: 'IDLE'
+                },
+                ERROR: {
+                    RESET: 'IDLE'
+                }
             },
             async dispatch(action, payload = {}) {
-                // **FIXED**: The core logic of the FSM transition was incorrect.
-                // It must check the transition from the *current* state.
-                const nextState = this.transitions?.[action];
-                
+                const nextState = this.transitions[this.currentState]?.[action];
                 if (!nextState) {
-                    console.warn(`無效的轉換: 從 ${this.currentState} 執行 ${action}`);
+                    console.warn(`無效的轉換: 從 ${this.currentState} 狀態執行動作 ${action}`);
                     return;
                 }
                 
                 console.log(`狀態轉換: ${this.currentState} -> ${nextState} (動作: ${action})`);
                 this.currentState = nextState;
-                
+                UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
+
                 // --- 處理進入新狀態的邏輯 ---
                 switch (this.currentState) {
                     case 'INITIALIZING_QR':
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
-                        await CameraManager.start(
+                        CameraManager.start(
                             { fps: 10, qrbox: { width: 250, height: 250 } },
                             (decodedText, decodedResult) => {
-                                if (this.currentState === 'SCANNING_QR') {
+                                if (this.currentState === 'SCANNING_QR') { // 確保只在正確的狀態下處理
                                     this.qrData = decodedText;
                                     this.dispatch('QR_SUCCESS');
                                 }
                             },
                             (err) => this.dispatch('FAIL', { error: '無法啟動 QR 掃描相機。' })
-                        );
-                        if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
+                        ).then(() => {
+                            if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
+                        }).catch(err => {
+                            console.error("QR Camera start promise rejected:", err);
+                            this.dispatch('FAIL', { error: '啟動 QR 相機失敗。' });
+                        });
                         break;
 
                     case 'SCANNING_QR':
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
+                        // 掃描成功後停止相機的邏輯已在回調中處理
                         break;
                         
                     case 'AWAITING_OCR':
                         await CameraManager.stop();
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
                         break;
 
                     case 'INITIALIZING_OCR':
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
-                        await CameraManager.start(
-                            { fps: 5 },
-                            () => {}, // OCR 模式下不需要成功回調
+                        CameraManager.start(
+                            { fps: 5 }, // OCR 模式下較低的 FPS 即可
+                            () => {}, // OCR 模式不需要成功回調
                             (err) => this.dispatch('FAIL', { error: '無法啟動血壓計掃描相機。' })
-                        );
-                        if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
-                        break;
-                    
-                    case 'SCANNING_OCR':
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
+                        ).then(() => {
+                            if (CameraManager.isScanning) this.dispatch('CAMERA_STARTED');
+                        }).catch(err => {
+                            console.error("BP Camera start promise rejected:", err);
+                            this.dispatch('FAIL', { error: '啟動血壓計相機失敗。' });
+                        });
                         break;
 
                     case 'PROCESSING_OCR':
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
                         try {
                             const videoElement = CameraManager.captureFrame();
                             const bpData = await OCRProcessor.recognize(videoElement);
-                            await CameraManager.stop();
+                            // 修正：OCR 完成後停止相機
+                            await CameraManager.stop(); 
                             this.dispatch('OCR_SUCCESS', { bpData });
                         } catch (err) {
                             console.error("OCR 處理失敗:", err);
@@ -437,30 +564,25 @@
                             this.dispatch('OCR_FAIL');
                         }
                         break;
-                    
-                    case 'COMPLETE':
-                        UIManager.updateUIForState(this.currentState, { qrData: this.qrData,...payload });
-                        break;
 
                     case 'IDLE':
                         await CameraManager.stop();
                         await OCRProcessor.terminate();
                         this.qrData = null;
+                        // 重置 UI 顯示
                         UIManager.elements.qrResultText.textContent = '';
                         UIManager.elements.bpResultText.textContent = '';
-                        UIManager.updateUIForState(this.currentState);
                         break;
 
                     case 'ERROR':
                         await CameraManager.stop();
-                        UIManager.updateUIForState(this.currentState, payload);
                         break;
                 }
             }
         };
 
         // ===================================================================
-        // == 事件監聽器: 連接 UI 與 FSM
+        // == 事件監聽器: 連接 UI 與 FSM.
         // ===================================================================
         UIManager.elements.startScanBtn.addEventListener('click', () => AppFSM.dispatch('START_QR_SCAN'));
         UIManager.elements.openBpCameraBtn.addEventListener('click', () => AppFSM.dispatch('START_OCR_SCAN'));
@@ -473,6 +595,7 @@
         async function main() {
             UIManager.updateUIForState('IDLE');
             CameraManager.init();
+            // 預先初始化 OCR worker 以加快首次使用速度
             try {
                 await OCRProcessor.init();
                 UIManager.updateOcrProgress(''); // 清除載入訊息
