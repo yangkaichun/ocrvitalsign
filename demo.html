@@ -172,9 +172,6 @@
             // --- Tesseract.js Worker Initialization ---
             async function initializeTesseract() {
                 statusElement.textContent = '正在載入 OCR 引擎...';
-                // The URL to the gzipped custom traineddata file.
-                // This file should be hosted on a server.
-                // The 'ssd.traineddata' file from https://github.com/Shreeshrii/tessdata_ssd was gzipped.
                 const langPath = 'https://cdn.jsdelivr.net/gh/Shreeshrii/tessdata_ssd@main/';
                 
                 tesseractWorker = await Tesseract.createWorker('ssd', 1, {
@@ -239,18 +236,15 @@
                 updateUI();
 
                 try {
-                    // 使用 facingMode: { exact: "environment" } 來強制使用後置攝影機
                     const config = { 
                         fps: 10, 
                         qrbox: { width: 250, height: 250 },
-                        facingMode: { exact: "environment" } // 嘗試使用後置攝影機
+                        // prefer facingMode: { exact: "environment" } for rear camera
+                        facingMode: { exact: "environment" } 
                     };
 
-                    // Html5Qrcode.start 方法可以直接接受 facingMode 配置，
-                    // 這樣就不需要先呼叫 getCameras() 再判斷 cameraId。
-                    // 這樣寫更簡潔，且能更好地處理沒有明確標識的後置鏡頭的設備。
                     await html5QrCode.start(
-                        { facingMode: { exact: "environment" } }, // 優先使用後置攝影機
+                        { facingMode: { exact: "environment" } }, 
                         config, 
                         onQrScanSuccess
                     );
@@ -259,8 +253,6 @@
                 } catch (err) {
                     console.error("無法啟動 QR Code 掃描器，嘗試改用使用者預設攝影機。", err);
                     statusElement.textContent = `錯誤：無法啟動後置攝影機。嘗試改用預設攝影機。${err.message}`;
-                    // 如果後置攝影機無法啟動（例如桌面瀏覽器或沒有後置鏡頭的設備），
-                    // 則嘗試使用第一個可用的攝影機。
                     try {
                         const devices = await Html5Qrcode.getCameras();
                         if (devices && devices.length) {
@@ -280,14 +272,14 @@
             }
 
             function onQrScanSuccess(decodedText, decodedResult) {
-                if (appState !== 'SCANNING_QR') return; // Prevent multiple triggers
+                if (appState !== 'SCANNING_QR') return; 
                 
                 console.log(`QR Code 掃描成功: ${decodedText}`);
                 qrResultData = decodedText;
                 appState = 'QR_SCANNED';
 
                 // IMPORTANT: Pause the scanner instead of clearing it to keep the camera stream active.
-                html5QrCode.pause(true);
+                html5QrCode.pause(true); // Pause scanning but keep camera stream active
                 updateUI();
             }
 
@@ -297,9 +289,23 @@
                 captureBpBtn.disabled = true;
 
                 try {
+                    // 如果 html5QrCode 已經停止或不存在，則需要重新啟動攝影機
+                    // 檢查 html5QrCode.is scanning 是否為 true, 否則無法獲取視訊元素
+                    if (!html5QrCode || !html5QrCode.is ; scanning) {
+                        // 如果 QR 掃描器已經停止，需要考慮重新啟動攝影機以擷取畫面
+                        // 或者，更穩妥的方式是：在 onQrScanSuccess 時不真正停止，
+                        // 而是暫停掃描，以便後續擷取畫面。
+                        // 目前的設計是 `pause(true)`，理論上應該保持視訊元素活躍。
+                        // 我們需要從 DOM 中找到視訊元素。
+                        console.warn("QR 掃描器可能已停止或未初始化，嘗試重新獲取視訊元素。");
+                        await startQrScan(); // 重新啟動攝影機，以便擷取畫面
+                        // 這裡可能需要一些延遲，等待攝影機串流穩定
+                        await new Promise(resolve => setTimeout(resolve, 500)); 
+                    }
+
                     const videoElement = document.querySelector('#qr-reader video');
-                    if (!videoElement) {
-                        throw new Error("找不到視訊元素。");
+                    if (!videoElement || videoElement.readyState < 2) { // readyState < 2 means not enough data for current playback
+                        throw new Error("視訊元素尚未就緒，或無法獲取即時畫面。");
                     }
 
                     // 1. Capture and preprocess the image
@@ -315,20 +321,23 @@
 
                 } catch (error) {
                     console.error("OCR 處理失敗:", error);
-                    bpResultText.textContent = "辨識失敗，請重試。";
+                    bpResultText.textContent = `辨識失敗，請重試。錯誤: ${error.message}`;
                 } finally {
                     appState = 'COMPLETE';
                     updateUI();
                     captureBpBtn.disabled = false;
+                    // 在完成後，為了避免不必要的攝影機佔用，可以考慮停止。
+                    // 但如果用戶可能需要重新擷取，則可以不停止。
+                    // 在這個流程中，完成後會顯示 Reset 按鈕，Reset 會處理停止。
                 }
             }
             
             function preprocessImage(videoElement) {
-                // Get dimensions from the overlay and video
                 const videoRect = videoElement.getBoundingClientRect();
                 const overlayRect = bpOverlayElement.getBoundingClientRect();
 
                 // Calculate crop area relative to the video's intrinsic size
+                // 確保使用 videoWidth 和 videoHeight 獲取原始解析度
                 const scaleX = videoElement.videoWidth / videoRect.width;
                 const scaleY = videoElement.videoHeight / videoRect.height;
                 
@@ -337,55 +346,42 @@
                 const sWidth = overlayRect.width * scaleX;
                 const sHeight = overlayRect.height * scaleY;
 
-                // Set canvas size to the cropped size
                 ocrCanvas.width = sWidth;
                 ocrCanvas.height = sHeight;
 
                 // Draw the cropped part of the video onto the canvas
                 ocrCtx.drawImage(videoElement, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
 
-                // Get image data for manipulation
+                // Image processing pipeline: Grayscale -> Contrast -> Binarization
                 let imageData = ocrCtx.getImageData(0, 0, ocrCanvas.width, ocrCanvas.height);
                 let data = imageData.data;
 
-                // Image processing pipeline: Grayscale -> Contrast -> Binarization
                 for (let i = 0; i < data.length; i += 4) {
-                    // Grayscale (luminosity method)
                     let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-
-                    // Contrast (simple method)
-                    const contrast = 1.5; // Tunable parameter
+                    const contrast = 1.5; 
                     gray = (gray - 128) * contrast + 128;
                     gray = Math.max(0, Math.min(255, gray));
-
-                    // Binarization (simple threshold)
-                    const threshold = 128; // Tunable parameter
+                    const threshold = 128; 
                     const color = gray > threshold ? 255 : 0;
                     
-                    data[i] = color;      // Red
-                    data[i + 1] = color; // Green
-                    data[i + 2] = color; // Blue
+                    data[i] = color;      
+                    data[i + 1] = color; 
+                    data[i + 2] = color; 
                 }
 
-                // Put the processed data back onto the canvas
                 ocrCtx.putImageData(imageData, 0, 0);
 
                 return ocrCanvas;
             }
 
             function parseBPResult(text) {
-                // Clean the text: remove spaces, newlines, and common misread characters
                 const cleanedText = text.replace(/[\s\n\r]/g, '').replace(/o/gi, '0').replace(/l/gi, '1').replace(/s/gi, '5');
-                
-                // Try to find patterns like "120/80", "120 80", or just two numbers
                 const match = cleanedText.match(/(\d{2,3})[^\d]*(\d{2,3})/);
                 
                 if (match && match.length >= 3) {
-                    // 修正這裡，使用 match[1] 和 match[2] 來獲取正確的捕獲組
                     return `收縮壓: ${match[1]} / 舒張壓: ${match[2]}`;
                 }
                 
-                // If no clear pattern, just return the cleaned text for manual review
                 return `無法解析，原始辨識文字: "${cleanedText}"`;
             }
 
