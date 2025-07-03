@@ -1,672 +1,640 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>血壓計數值辨識器 - QR Code 啟用</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
-  <style>
-    .camera-view { 
-      position: relative; 
-      width: 100%; 
-      max-width: 500px; 
-      margin: 20px auto; 
-      border: 2px solid #e5e7eb; 
-      border-radius: 8px;
-      overflow: hidden;
-      background-color: #000; 
-    }
-    #video-preview { 
-      width: 100%; 
-      display: block; 
-    }
-    #qr-reader-container {
-        max-width: 500px;
-        margin: 20px auto;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        overflow: hidden;
-        background-color: #000;
-        display: none;
-    }
-    .result-input {
-      background-color: #f9fafb;
-      border: 1px solid #d1d5db;
-    }
-    .result-input:read-only {
-      background-color: #f3f4f6;
-      color: #6b7280;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屏東榮總 - 智慧病房生理量測自動化系統計畫</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Blue & Warm Sand -->
+    <!-- Application Structure Plan: The application is designed as a single-page interactive dashboard rather than a linear document. This structure allows reviewers to quickly navigate to key sections (Overview, Details, Timeline, Budget, Benefits, Simulation) via a sticky navigation bar, facilitating non-linear exploration. This user-centric design aims to improve comprehension and engagement by presenting complex information in digestible, visually-appealing modules, making it more persuasive for a funding committee. -->
+    <!-- Visualization & Content Choices: Report Info: 5-year project plan -> Goal: Show chronological progress -> Viz: Interactive timeline (HTML/JS) -> Interaction: Click on a year to reveal detailed goals and tasks. Justification: More engaging than a static list. | Report Info: NT$8.5M budget breakdown -> Goal: Clarify financial allocation -> Viz: Doughnut and Stacked Bar charts -> Interaction: Hover tooltips for details, toggle to see raw data table. Justification: Visualizes complex financial data for quick understanding. | Report Info: Project workflow -> Goal: Explain the operational process -> Viz: Step-by-step diagram (HTML/Tailwind) -> Justification: Simplifies the technical process into an easy-to-follow visual guide. | Report Info: Project benefits -> Goal: Highlight key advantages -> Viz: Icon-based cards (HTML/Tailwind) -> Justification: Makes benefits scannable and memorable. | Report Info: System workflow -> Goal: Provide interactive demonstration -> Viz: Simulated scenario with interactive controls (HTML/JS) -> Interaction: Buttons to simulate QR scan, data capture, and NIS upload. Justification: Offers a hands-on understanding of the system's operation. All visualizations are implemented using Chart.js (Canvas) and structured HTML/CSS, adhering to the NO SVG/Mermaid constraint. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #F8F7F4;
+            color: #333333;
+        }
+        .text-primary { color: #3A5C83; }
+        .bg-primary { background-color: #3A5C83; }
+        .bg-accent { background-color: #D3C4A3; }
+        .border-primary { border-color: #3A5C83; }
+        .btn-nav {
+            padding: 8px 16px;
+            border-radius: 9999px;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+        }
+        .btn-nav:hover, .btn-nav.active {
+            background-color: #3A5C83;
+            color: white;
+        }
+        .timeline-item {
+            cursor: pointer;
+            transition: all 0.3s;
+            border-width: 2px;
+            border-color: transparent;
+        }
+        .timeline-item.active {
+            transform: translateY(-5px);
+            border-color: #3A5C83;
+            background-color: white;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        .section-title {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #3A5C83;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .section-subtitle {
+            text-align: center;
+            color: #555;
+            max-width: 800px;
+            margin: 0 auto 3rem auto;
+        }
+        .simulation-device {
+            background-color: #e0e0e0;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+            width: 200px;
+            height: 120px;
+        }
+        .simulation-screen {
+            background-color: #222;
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 2rem;
+            margin-top: 10px;
+        }
+        .simulation-log {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 100px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #444;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-  <div class="container mx-auto max-w-4xl p-4">
-    <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">
-      <i class="fas fa-heartbeat text-red-500"></i>
-      血壓計數值辨識器
-    </h1>
+<body class="antialiased">
+    <header id="header" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="text-xl font-bold text-primary">
+                屏東榮總智慧醫療計畫
+            </div>
+            <div class="hidden md:flex items-center space-x-2">
+                <a href="#overview" class="btn-nav active">總覽</a>
+                <a href="#details" class="btn-nav">計畫內容</a>
+                <a href="#timeline" class="btn-nav">時程規劃</a>
+                <a href="#budget" class="btn-nav">經費預算</a>
+                <a href="#benefits" class="btn-nav">預期效益</a>
+                <a href="#simulation" class="btn-nav">模擬情境</a>
+            </div>
+            <div class="md:hidden">
+                <select id="mobile-nav" class="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-700">
+                    <option value="#overview">總覽</option>
+                    <option value="#details">計畫內容</option>
+                    <option value="#timeline">時程規劃</option>
+                    <option value="#budget">經費預算</option>
+                    <option value="#benefits">預期效益</option>
+                    <option value="#simulation">模擬情境</option>
+                </select>
+            </div>
+        </nav>
+    </header>
 
-    <!-- QR Code 掃描區域 -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">
-        <i class="fas fa-qrcode text-blue-500"></i>
-        步驟 1: 掃描 QR Code
-      </h2>
-      
-      <div id="qr-reader-container">
-        <div id="qr-reader" style="width:100%"></div>
-      </div>
-      
-      <div class="text-center">
-        <button id="start-qr-scan-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed">
-          <i class="fas fa-camera"></i>
-          掃描 QR Code
-        </button>
-        
-        <div id="qr-code-result" class="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded hidden">
-          <i class="fas fa-check-circle"></i>
-          已取得代碼: <span id="scanned-code" class="font-mono font-bold"></span>
+    <main>
+        <section id="overview" class="py-16 md:py-24">
+            <div class="container mx-auto px-4 text-center">
+                <h1 class="text-4xl md:text-5xl font-bold text-primary mb-4">建置智慧病房生理量測自動化系統</h1>
+                <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-12">以OCR辨識技術革新護理作業流程，提升數據準確性與醫療照護品質，邁向智慧醫療新紀元。</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary">
+                        <h3 class="text-xl font-bold text-gray-500 mb-2">計畫總經費</h3>
+                        <p class="text-4xl font-bold text-primary">850萬</p>
+                        <p class="text-gray-500">新台幣</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary">
+                        <h3 class="text-xl font-bold text-gray-500 mb-2">計畫期程</h3>
+                        <p class="text-4xl font-bold text-primary">5年</p>
+                        <p class="text-gray-500">114 - 118年度</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary">
+                        <h3 class="text-xl font-bold text-gray-500 mb-2">核心技術</h3>
+                        <p class="text-4xl font-bold text-primary">OCR</p>
+                        <p class="text-gray-500">光學字元辨識</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="details" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-4">
+                <h2 class="section-title">計畫內容</h2>
+                <p class="section-subtitle">本計畫旨在解決醫療第一線的痛點。現行人工抄寫生理數據不僅耗時，更隱含錯誤風險。我們提出的智慧化系統，將徹底改變此作業模式，將寶貴的人力與時間回歸病患照護本身。</p>
+                
+                <div class="bg-gray-50 p-8 rounded-2xl">
+                    <h3 class="text-2xl font-bold text-center text-primary mb-8">智慧化作業流程</h3>
+                    <div class="flex flex-col md:flex-row justify-center items-center gap-8">
+                        <div class="text-center">
+                            <div class="bg-primary text-white w-24 h-24 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg">📲</div>
+                            <h4 class="text-lg font-bold">1. 掃描識別</h4>
+                            <p class="text-gray-600">掃描病患手圈QR-Code</p>
+                        </div>
+                        <div class="text-gray-300 text-4xl hidden md:block">→</div>
+                        <div class="text-gray-300 text-4xl rotate-90 md:hidden">↓</div>
+                        <div class="text-center">
+                            <div class="bg-primary text-white w-24 h-24 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg">📸</div>
+                            <h4 class="text-lg font-bold">2. 影像擷取</h4>
+                            <p class="text-gray-600">拍攝生理量測儀器數據</p>
+                        </div>
+                        <div class="text-gray-300 text-4xl hidden md:block">→</div>
+                         <div class="text-gray-300 text-4xl rotate-90 md:hidden">↓</div>
+                        <div class="text-center">
+                            <div class="bg-primary text-white w-24 h-24 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg">☁️</div>
+                            <h4 class="text-lg font-bold">3. 智慧上傳</h4>
+                            <p class="text-gray-600">OCR自動辨識並回傳NIS</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="timeline" class="py-16 md:py-24">
+            <div class="container mx-auto px-4">
+                <h2 class="section-title">時程規劃</h2>
+                <p class="section-subtitle">本計畫為期五年，我們已制定詳盡的階段性目標與執行策略。您可以點擊下方各年度，查看該階段的詳細規劃內容，以確保計畫的每一步都穩健地朝向成功邁進。</p>
+                <div id="timeline-nav" class="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8 max-w-4xl mx-auto">
+                </div>
+                <div id="timeline-content" class="bg-white p-8 rounded-2xl shadow-lg min-h-[300px]">
+                </div>
+            </div>
+        </section>
+
+        <section id="budget" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-4">
+                <h2 class="section-title">經費預算</h2>
+                <p class="section-subtitle">本計畫總經費為850萬新台幣，所有預算都經過精密的規劃與評估，以確保資源發揮最大效益。我們透過互動式圖表呈現經費的分配情況，讓您對資金的運用有更清晰的了解。</p>
+                <div class="text-center mb-8">
+                    <button id="view-chart-btn" class="bg-primary text-white py-2 px-6 rounded-full font-semibold">圖表檢視</button>
+                    <button id="view-table-btn" class="bg-gray-200 text-gray-700 py-2 px-6 rounded-full font-semibold ml-2">表格檢視</button>
+                </div>
+
+                <div id="chart-view">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                        <div class="lg:col-span-2 bg-gray-50 p-6 rounded-xl">
+                            <h3 class="text-xl font-bold text-center text-primary mb-4">總經費分配</h3>
+                             <div class="chart-container mx-auto max-w-sm">
+                                <canvas id="budgetDoughnutChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-3 bg-gray-50 p-6 rounded-xl">
+                            <h3 class="text-xl font-bold text-center text-primary mb-4">各年度經費規劃 (單位: 萬元)</h3>
+                            <div class="chart-container">
+                                <canvas id="budgetBarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="table-view" class="hidden">
+                    <div class="overflow-x-auto bg-white rounded-lg shadow">
+                         <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">年度</th>
+                                    <th scope="col" class="px-6 py-3">項目</th>
+                                    <th scope="col" class="px-6 py-3 text-right">金額 (元)</th>
+                                    <th scope="col" class="px-6 py-3">說明</th>
+                                </tr>
+                            </thead>
+                            <tbody id="budget-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="benefits" class="py-16 md:py-24">
+            <div class="container mx-auto px-4">
+                <h2 class="section-title">預期效益</h2>
+                <p class="section-subtitle">本計畫的成功實施，將不僅是技術的革新，更會為醫院、醫護人員及病患帶來深遠的正面影響。我們預期在效率、準確性、照護品質及永續發展四個面向，達成顯著的效益。</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">⏱️</div>
+                        <h3 class="text-xl font-bold text-primary mb-2">提升工作效率</h3>
+                        <p class="text-gray-600">大幅減少人工抄寫時間，讓護理人員能更專注於臨床照護，提升整體工作流程的順暢度。</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">🎯</div>
+                        <h3 class="text-xl font-bold text-primary mb-2">降低錯誤風險</h3>
+                        <p class="text-gray-600">自動化數據傳輸有效避免人為抄寫錯誤，確保病歷資料的準確性與即時性，提升病患安全。</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">❤️</div>
+                        <h3 class="text-xl font-bold text-primary mb-2">優化照護品質</h3>
+                        <p class="text-gray-600">醫護人員有更多時間與病患互動，提供更細緻的照護服務。精確的數據有助於醫師做出更佳的臨床決策。</p>
+                    </div>
+                     <div class="bg-white p-8 rounded-2xl shadow-lg text-center transform hover:scale-105 transition-transform duration-300">
+                        <div class="text-5xl mb-4">🌱</div>
+                        <h3 class="text-xl font-bold text-primary mb-2">促進永續發展</h3>
+                        <p class="text-gray-600">建立可擴展的智慧醫療基礎，為未來導入更多智慧應用奠定基石，並可將成功模式推廣至其他院區。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="simulation" class="py-16 md:py-24 bg-white">
+            <div class="container mx-auto px-4">
+                <h2 class="section-title">模擬情境</h2>
+                <p class="section-subtitle">透過此互動式模擬，您可以親身體驗智慧病房生理量測自動化系統的實際運作流程，感受其帶來的便捷與高效。</p>
+                
+                <div class="flex flex-col items-center gap-8 bg-gray-50 p-8 rounded-2xl shadow-lg max-w-3xl mx-auto">
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-8 w-full">
+                        <div class="flex-1 text-center">
+                            <h3 class="text-xl font-bold text-primary mb-4">病患手圈</h3>
+                            <div class="bg-white p-6 rounded-lg shadow-md border-2 border-gray-300 flex flex-col items-center justify-center h-32">
+                                <p class="font-mono text-gray-700 text-lg">QR-Code: PATIENT-001</p>
+                                <p class="text-sm text-gray-500">姓名: 王小明 / 床號: 101</p>
+                            </div>
+                        </div>
+                        <div class="flex-1 text-center">
+                            <h3 class="text-xl font-bold text-primary mb-4">生理量測儀器</h3>
+                            <div class="simulation-device">
+                                <span class="text-lg text-gray-600">血壓</span>
+                                <span id="bp-reading" class="simulation-screen">120/80</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-4 mt-8 w-full">
+                        <button id="scan-qr-btn" class="bg-primary text-white py-3 px-6 rounded-full font-semibold shadow-md hover:bg-primary-dark transition-colors duration-300">掃描QR-Code</button>
+                        <button id="capture-data-btn" class="bg-accent text-gray-800 py-3 px-6 rounded-full font-semibold shadow-md hover:bg-accent-dark transition-colors duration-300">拍攝數據</button>
+                        <button id="upload-nis-btn" class="bg-primary text-white py-3 px-6 rounded-full font-semibold shadow-md hover:bg-primary-dark transition-colors duration-300">上傳NIS</button>
+                        <button id="reset-sim-btn" class="bg-gray-400 text-white py-3 px-6 rounded-full font-semibold shadow-md hover:bg-gray-500 transition-colors duration-300">重置</button>
+                    </div>
+
+                    <div class="w-full mt-8">
+                        <h3 class="text-xl font-bold text-primary mb-4 text-center">系統日誌 (NIS回傳模擬)</h3>
+                        <div id="simulation-log" class="simulation-log">
+                            <p class="text-gray-500">等待操作...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p>&copy; 屏東榮民總醫院</p>
+            <p class="text-sm text-gray-400 mt-2">本報告為「健康台灣深耕計畫」申請文件</p>
         </div>
-      </div>
-    </div>
-    
-    <!-- 血壓掃描區域 -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">
-        <i class="fas fa-camera text-green-500"></i>
-        步驟 2: 掃描血壓數值
-      </h2>
-      
-      <div class="camera-view">
-        <video id="video-preview" autoplay playsinline muted></video>
-        <canvas id="capture-canvas" style="display: none;"></canvas>
-      </div>
-      
-      <div class="text-center">
-        <button id="scan-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
-          <i class="fas fa-scan"></i>
-          掃描讀數
-        </button>
-        
-        <div id="loading-indicator" class="mt-4 hidden">
-          <div class="inline-flex items-center">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-            <span class="ml-2 text-gray-600">辨識中...</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    </footer>
 
-    <!-- 結果顯示區域 -->
-    <div id="result-display" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">
-        <i class="fas fa-clipboard-list text-purple-500"></i>
-        辨識結果
-      </h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">收縮壓 (SYS)</label>
-          <input type="number" id="sys-result" class="result-input w-full px-3 py-2 rounded-md text-lg font-semibold text-right" readonly>
-          <span class="text-xs text-gray-500">mmHg</span>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">舒張壓 (DIA)</label>
-          <input type="number" id="dia-result" class="result-input w-full px-3 py-2 rounded-md text-lg font-semibold text-right" readonly>
-          <span class="text-xs text-gray-500">mmHg</span>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">脈搏 (PUL)</label>
-          <input type="number" id="pul-result" class="result-input w-full px-3 py-2 rounded-md text-lg font-semibold text-right" readonly>
-          <span class="text-xs text-gray-500">次/分</span>
-        </div>
-      </div>
-      
-      <div class="flex justify-end space-x-3">
-        <button id="edit-button" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-200">
-          <i class="fas fa-edit"></i>
-          編輯
-        </button>
-        <button id="save-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed" disabled>
-          <i class="fas fa-save"></i>
-          儲存
-        </button>
-      </div>
-    </div>
-
-    <!-- 歷史記錄區域 -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-      <h2 class="text-xl font-semibold mb-4 text-gray-700">
-        <i class="fas fa-chart-line text-indigo-500"></i>
-        歷史趨勢
-      </h2>
-      
-      <div class="mb-6" style="height: 400px;">
-        <canvas id="history-chart"></canvas>
-      </div>
-      
-      <h3 class="text-lg font-semibold mb-4 text-gray-700">
-        <i class="fas fa-history text-gray-500"></i>
-        歷史記錄
-      </h3>
-      
-      <div id="history-table" class="overflow-x-auto">
-        <div class="text-center py-8 text-gray-500">
-          <i class="fas fa-database text-4xl mb-2"></i>
-          <p>尚無記錄資料</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 載入必要的函式庫 -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/idb@8/build/umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // DOM 元素參考
-      const videoElement = document.getElementById('video-preview');
-      const canvasElement = document.getElementById('capture-canvas');
-      const scanButton = document.getElementById('scan-button');
-      const resultDisplay = document.getElementById('result-display');
-      const sysInput = document.getElementById('sys-result');
-      const diaInput = document.getElementById('dia-result');
-      const pulInput = document.getElementById('pul-result');
-      const editButton = document.getElementById('edit-button');
-      const saveButton = document.getElementById('save-button');
-      const historyChartCanvas = document.getElementById('history-chart');
-      const historyTableContainer = document.getElementById('history-table');
-      const loadingIndicator = document.getElementById('loading-indicator');
-
-      // QR Code 相關元素
-      const qrReaderContainer = document.getElementById('qr-reader-container');
-      const startQrScanButton = document.getElementById('start-qr-scan-button');
-      const qrCodeResultDisplay = document.getElementById('qr-code-result');
-      const scannedCodeSpan = document.getElementById('scanned-code');
-
-      // 全域變數
-      let ocrWorker = null;
-      let historyChart = null;
-      let qrCodeScanner = null;
-      let currentQrCode = null;
-      let isQrScannerActive = false;
-      let isCameraActive = false;
-
-      // IndexedDB 設定
-      const dbPromise = idb.openDB('blood-pressure-db', 1, {
-        upgrade(db) {
-          if (!db.objectStoreNames.contains('readings')) {
-            const store = db.createObjectStore('readings', { keyPath: 'id', autoIncrement: true });
-            store.createIndex('timestamp', 'timestamp');
-            store.createIndex('qrCode', 'qrCode');
-          }
-        },
-      });
-
-      async function addReading(reading) {
-        const db = await dbPromise;
-        await db.add('readings', reading);
-        console.log('讀數已儲存');
-      }
-
-      async function getAllReadings() {
-        const db = await dbPromise;
-        return await db.getAllFromIndex('readings', 'timestamp');
-      }
-
-      // 初始化圖表
-      function initializeChart() {
-        const ctx = historyChartCanvas.getContext('2d');
-        historyChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            datasets: [
-              { 
-                label: '收縮壓 (SYS)', 
-                borderColor: 'rgb(239, 68, 68)', 
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                data: [], 
-                fill: false, 
-                tension: 0.1,
-                pointRadius: 4,
-                pointHoverRadius: 6
-              },
-              { 
-                label: '舒張壓 (DIA)', 
-                borderColor: 'rgb(59, 130, 246)', 
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                data: [], 
-                fill: false, 
-                tension: 0.1,
-                pointRadius: 4,
-                pointHoverRadius: 6
-              },
-              { 
-                label: '脈搏 (PUL)', 
-                borderColor: 'rgb(16, 185, 129)', 
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                data: [], 
-                fill: false, 
-                tension: 0.1,
-                pointRadius: 4,
-                pointHoverRadius: 6
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: {
-                type: 'time',
-                time: {
-                  unit: 'day',
-                  tooltipFormat: 'yyyy-MM-dd HH:mm',
-                  displayFormats: {
-                    day: 'MM-dd'
-                  }
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const timelineData = {
+                '114': {
+                    title: '第一年 (114年度): 開發與概念驗證',
+                    content: `
+                        <ul class="list-disc list-inside space-y-3 text-gray-700">
+                            <li><strong>推動目標：</strong>完成智慧病房生理量測自動化系統的核心開發與概念驗證（POC）。</li>
+                            <li><strong>架構與策略：</strong>專注於系統設計、OCR模組開發、伺服器架設，並在單一病房進行POC，確保技術可行性。</li>
+                            <li><strong>執行步驟：</strong>成立專案團隊、進行需求訪談、完成系統架構設計、開發核心功能、採購硬體，並在試點病房進行測試與優化。</li>
+                        </ul>
+                    `
                 },
-                title: { display: true, text: '日期' }
-              },
-              y: {
-                beginAtZero: true,
-                title: { display: true, text: '數值' }
-              }
-            },
-            plugins: {
-              legend: {
-                position: 'top',
-              }
+                '115': {
+                    title: '第二年 (115年度): 系統整合與準備',
+                    content: `
+                        <ul class="list-disc list-inside space-y-3 text-gray-700">
+                            <li><strong>推動目標：</strong>完成系統與全院NIS的全面整合，為全院推廣做準備。</li>
+                            <li><strong>架構與策略：</strong>進行NIS深度整合、強化資安防護、優化系統效能，並準備使用者培訓教材。</li>
+                            <li><strong>執行步驟：</strong>與NIS供應商合作開發、進行系統整合測試(SIT)與使用者接受度測試(UAT)、完成資安驗證、製作操作手冊。</li>
+                        </ul>
+                    `
+                },
+                '116': {
+                    title: '第三年 (116年度): 全院推廣與維運',
+                    content: `
+                        <ul class="list-disc list-inside space-y-3 text-gray-700">
+                            <li><strong>推動目標：</strong>系統於全院正式上線，進入常態維運期。</li>
+                            <li><strong>架構與策略：</strong>分階段將系統推廣至全院、進行全面使用者教育訓練、建立常態維護機制、開始進行效益評估。</li>
+                            <li><strong>執行步驟：</strong>制定詳細上線計畫、部署系統至各病房、成立維運團隊、定期檢討系統運作狀況。</li>
+                        </ul>
+                    `
+                },
+                '117': {
+                    title: '第四年 (117年度): 持續優化與擴展',
+                    content: `
+                         <ul class="list-disc list-inside space-y-3 text-gray-700">
+                            <li><strong>推動目標：</strong>持續優化系統，並探索功能擴展的可能性。</li>
+                            <li><strong>架構與策略：</strong>根據使用者回饋進行功能迭代、評估整合更多生理量測設備、探索數據的加值應用。</li>
+                            <li><strong>執行步驟：</strong>定期進行功能回顧、規劃並實施系統升級、研究新設備整合方案、與臨床單位合作探索數據應用。</li>
+                        </ul>
+                    `
+                },
+                '118': {
+                    title: '第五年 (118年度): 穩固運作與永續',
+                    content: `
+                         <ul class="list-disc list-inside space-y-3 text-gray-700">
+                            <li><strong>推動目標：</strong>穩固系統的常態運作，評估長期效益與可持續性。</li>
+                            <li><strong>架構與策略：</strong>確保長期穩定維護、將成功經驗向外推廣分享、將本系統納入醫院整體智慧發展藍圖。</li>
+                            <li><strong>執行步驟：</strong>簽訂長期維護合約、撰寫計畫總結報告、參與醫療科技研討會、將成果納入醫院年度發展報告。</li>
+                        </ul>
+                    `
+                }
+            };
+
+            const budgetData = [
+                { year: 114, items: [{ name: '系統開發與授權費', cost: 1000000 }] },
+                { year: 115, items: [{ name: 'NIS整合費', cost: 1000000 }, { name: '資安驗證費', cost: 500000 }, { name: '硬體設備費', cost: 1500000 }] },
+                { year: 116, items: [{ name: '系統維運服務費', cost: 1500000 }] },
+                { year: 117, items: [{ name: '系統維運服務費', cost: 1500000 }] },
+                { year: 118, items: [{ name: '系統維運服務費', cost: 1500000 }] },
+            ];
+
+            const timelineNav = document.getElementById('timeline-nav');
+            const timelineContent = document.getElementById('timeline-content');
+            
+            Object.keys(timelineData).forEach(year => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item p-4 bg-gray-100 rounded-lg text-center shadow-sm';
+                item.dataset.year = year;
+                item.innerHTML = `<p class="font-bold text-primary">${year}年度</p><p class="text-sm text-gray-500">${timelineData[year].title.split(':')[1].trim().split('(')[0]}</p>`;
+                timelineNav.appendChild(item);
+            });
+
+            function updateTimelineContent(year) {
+                const data = timelineData[year];
+                timelineContent.innerHTML = `<h3 class="text-xl font-bold text-primary mb-4">${data.title}</h3><div>${data.content}</div>`;
+                
+                document.querySelectorAll('.timeline-item').forEach(el => {
+                    el.classList.toggle('active', el.dataset.year === year);
+                });
             }
-          }
+
+            timelineNav.addEventListener('click', function(e) {
+                const target = e.target.closest('.timeline-item');
+                if (target) {
+                    updateTimelineContent(target.dataset.year);
+                }
+            });
+
+            updateTimelineContent('114');
+
+            const viewChartBtn = document.getElementById('view-chart-btn');
+            const viewTableBtn = document.getElementById('view-table-btn');
+            const chartView = document.getElementById('chart-view');
+            const tableView = document.getElementById('table-view');
+
+            viewChartBtn.addEventListener('click', () => {
+                chartView.style.display = 'block';
+                tableView.style.display = 'none';
+                viewChartBtn.classList.add('bg-primary', 'text-white');
+                viewChartBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                viewTableBtn.classList.add('bg-gray-200', 'text-gray-700');
+                viewTableBtn.classList.remove('bg-primary', 'text-white');
+            });
+            
+            viewTableBtn.addEventListener('click', () => {
+                chartView.style.display = 'none';
+                tableView.style.display = 'block';
+                viewTableBtn.classList.add('bg-primary', 'text-white');
+                viewTableBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                viewChartBtn.classList.add('bg-gray-200', 'text-gray-700');
+                viewChartBtn.classList.remove('bg-primary', 'text-white');
+            });
+
+            const budgetTableBody = document.getElementById('budget-table-body');
+            budgetData.forEach(yearData => {
+                yearData.items.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'bg-white border-b';
+                    row.innerHTML = `
+                        ${index === 0 ? `<td rowspan="${yearData.items.length}" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${yearData.year}</td>` : ''}
+                        <td class="px-6 py-4">${item.name}</td>
+                        <td class="px-6 py-4 text-right">${item.cost.toLocaleString()}</td>
+                        <td class="px-6 py-4">${{
+                            '系統開發與授權費': '系統開發服務費、OCR辨識模組授權費、資料庫授權費、開發工具授權費等',
+                            'NIS整合費': 'NIS系統介接與數據整合服務費',
+                            '資安驗證費': '第三方資安漏洞掃描、滲透測試、資安顧問服務費',
+                            '硬體設備費': '伺服器、儲存設備、網路設備等',
+                            '系統維運服務費': '系統日常維護、技術支援、故障排除、系統更新等'
+                        }[item.name] || ''}</td>
+                    `;
+                    budgetTableBody.appendChild(row);
+                });
+            });
+            
+            const totalDevCost = 1000000;
+            const totalIntegrationCost = 1000000 + 500000;
+            const totalHardwareCost = 1500000;
+            const totalMaintenanceCost = 1500000 * 3;
+
+            const doughnutCtx = document.getElementById('budgetDoughnutChart').getContext('2d');
+            new Chart(doughnutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['開發與授權', '整合與驗證', '硬體設備', '維運服務'],
+                    datasets: [{
+                        data: [totalDevCost, totalIntegrationCost, totalHardwareCost, totalMaintenanceCost],
+                        backgroundColor: ['#3A5C83', '#5E81AC', '#81A1C1', '#A3B9D1'],
+                        borderColor: '#F8F7F4',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const barCtx = document.getElementById('budgetBarChart').getContext('2d');
+            const barChartData = {
+                labels: budgetData.map(d => `${d.year}年`),
+                datasets: [
+                    { label: '系統開發/整合/驗證', data: [100, 150, 0, 0, 0], backgroundColor: '#3A5C83' },
+                    { label: '硬體設備', data: [0, 150, 0, 0, 0], backgroundColor: '#5E81AC' },
+                    { label: '維運服務', data: [0, 0, 150, 150, 150], backgroundColor: '#81A1C1' }
+                ]
+            };
+            new Chart(barCtx, {
+                type: 'bar',
+                data: barChartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += `${context.parsed.y} 萬`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const navLinks = document.querySelectorAll('.btn-nav');
+            const sections = document.querySelectorAll('main section');
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    if (pageYOffset >= sectionTop - 60) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href').substring(1) === current) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+
+            const mobileNav = document.getElementById('mobile-nav');
+            mobileNav.addEventListener('change', (e) => {
+                window.location.hash = e.target.value;
+            });
+
+            // Simulation Logic
+            const bpReadingElement = document.getElementById('bp-reading');
+            const scanQrBtn = document.getElementById('scan-qr-btn');
+            const captureDataBtn = document.getElementById('capture-data-btn');
+            const uploadNisBtn = document.getElementById('upload-nis-btn');
+            const resetSimBtn = document.getElementById('reset-sim-btn');
+            const simulationLog = document.getElementById('simulation-log');
+
+            let currentPatient = null;
+            let currentBpReading = null;
+
+            function logSimulation(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+                const logEntry = document.createElement('p');
+                logEntry.textContent = `[${timestamp}] ${message}`;
+                if (type === 'error') {
+                    logEntry.classList.add('text-red-600');
+                } else if (type === 'success') {
+                    logEntry.classList.add('text-green-600');
+                } else {
+                    logEntry.classList.add('text-gray-800');
+                }
+                simulationLog.prepend(logEntry); // Add to top
+                if (simulationLog.children.length > 10) { // Keep log concise
+                    simulationLog.removeChild(simulationLog.lastChild);
+                }
+            }
+
+            function generateRandomBP() {
+                const systolic = Math.floor(Math.random() * (140 - 100 + 1)) + 100;
+                const diastolic = Math.floor(Math.random() * (90 - 60 + 1)) + 60;
+                return `${systolic}/${diastolic}`;
+            }
+
+            function resetSimulation() {
+                currentPatient = null;
+                currentBpReading = null;
+                bpReadingElement.textContent = generateRandomBP();
+                simulationLog.innerHTML = '<p class="text-gray-500">等待操作...</p>';
+                logSimulation('模擬已重置', 'info');
+            }
+
+            scanQrBtn.addEventListener('click', () => {
+                currentPatient = { id: 'PATIENT-001', name: '王小明', bed: '101' };
+                logSimulation(`掃描成功！病患：${currentPatient.name} (床號: ${currentPatient.bed})`, 'success');
+                bpReadingElement.textContent = generateRandomBP(); // New reading after scan
+            });
+
+            captureDataBtn.addEventListener('click', () => {
+                if (!currentPatient) {
+                    logSimulation('請先掃描病患手圈！', 'error');
+                    return;
+                }
+                currentBpReading = bpReadingElement.textContent;
+                logSimulation(`拍攝數據成功！血壓讀數：${currentBpReading}`, 'success');
+            });
+
+            uploadNisBtn.addEventListener('click', () => {
+                if (!currentPatient || !currentBpReading) {
+                    logSimulation('請先掃描病患並拍攝數據！', 'error');
+                    return;
+                }
+                logSimulation(`上傳數據至NIS系統：病患 ${currentPatient.id}, 血壓 ${currentBpReading}`, 'success');
+                currentPatient = null; // Reset for next patient
+                currentBpReading = null;
+                bpReadingElement.textContent = generateRandomBP(); // New reading for next simulation
+            });
+
+            resetSimBtn.addEventListener('click', resetSimulation);
+
+            // Initial setup
+            resetSimulation();
         });
-      }
-
-      // 渲染歷史記錄
-      async function renderHistory() {
-        const readings = await getAllReadings();
-        
-        // 更新圖表
-        if (readings.length > 0) {
-          historyChart.data.datasets[0].data = readings.map(r => ({ x: new Date(r.timestamp), y: r.sys }));
-          historyChart.data.datasets[1].data = readings.map(r => ({ x: new Date(r.timestamp), y: r.dia }));
-          historyChart.data.datasets[2].data = readings.map(r => ({ x: new Date(r.timestamp), y: r.pul }));
-          historyChart.update();
-
-          // 更新表格
-          let tableHTML = `
-            <table class="min-w-full bg-white border border-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日期時間</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">代碼</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">收縮壓</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">舒張壓</th>
-                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">脈搏</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200">
-          `;
-          
-          readings.slice().reverse().forEach((r, index) => {
-            const date = new Date(r.timestamp);
-            const bgClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-            tableHTML += `
-              <tr class="${bgClass}">
-                <td class="px-4 py-2 text-sm text-gray-900">${date.toLocaleString('zh-TW')}</td>
-                <td class="px-4 py-2 text-sm font-mono text-gray-600">${r.qrCode || 'N/A'}</td>
-                <td class="px-4 py-2 text-sm font-semibold text-red-600">${r.sys}</td>
-                <td class="px-4 py-2 text-sm font-semibold text-blue-600">${r.dia}</td>
-                <td class="px-4 py-2 text-sm font-semibold text-green-600">${r.pul}</td>
-              </tr>
-            `;
-          });
-          
-          tableHTML += '</tbody></table>';
-          historyTableContainer.innerHTML = tableHTML;
-        }
-      }
-
-      // 初始化 Tesseract OCR
-      async function initializeTesseract() {
-        try {
-          console.log('正在載入 OCR 引擎...');
-          ocrWorker = await Tesseract.createWorker('eng', 1, {
-            logger: m => console.log(m)
-          });
-          await ocrWorker.setParameters({
-            tessedit_char_whitelist: '0123456789/.SYDIAPUL ',
-            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-          });
-          console.log('Tesseract worker 初始化完成');
-        } catch (error) {
-          console.error('OCR 引擎初始化失敗:', error);
-        }
-      }
-
-      // 圖像預處理
-      function captureAndPreprocess() {
-        const context = canvasElement.getContext('2d', { willReadFrequently: true });
-        canvasElement.width = videoElement.videoWidth;
-        canvasElement.height = videoElement.videoHeight;
-        
-        context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-        context.filter = 'grayscale(1) contrast(1.5) brightness(1.2)';
-        context.drawImage(canvasElement, 0, 0, canvasElement.width, canvasElement.height);
-        context.filter = 'none';
-
-        const imageData = context.getImageData(0, 0, canvasElement.width, canvasElement.height);
-        const data = imageData.data;
-        const threshold = 128;
-        
-        for (let i = 0; i < data.length; i += 4) {
-          const brightness = data[i];
-          const value = brightness > threshold ? 255 : 0;
-          data[i] = data[i+1] = data[i+2] = value;
-        }
-        
-        context.putImageData(imageData, 0, 0);
-        return canvasElement;
-      }
-
-      // 解析血壓數值
-      function parseBloodPressure(text) {
-        const cleanedText = text.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-        console.log("清理後的 OCR 文字:", cleanedText);
-
-        const patterns = [
-          /SYS:\s*(\d+)\s+DIA:\s*(\d+)\s+PUL:\s*(\d+)/i,
-          /(\d+)\s*\/\s*(\d+)\s*P?\s*(\d+)/,
-          /SYS\s*(\d+)\s*DIA\s*(\d+)\s*PUL\s*(\d+)/i,
-          /S(\d+)\s*D(\d+)\s*P(\d+)/i,
-          /(\d{2,3})\s+(\d{2,3})\s+(\d{2,3})/
-        ];
-
-        for (const pattern of patterns) {
-          const match = cleanedText.match(pattern);
-          if (match && match.length >= 4) {
-            const [sys, dia, pul] = [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
-            if (sys >= 50 && sys <= 300 && dia >= 30 && dia <= 200 && pul >= 30 && pul <= 220) {
-              return { sys, dia, pul };
-            }
-          }
-        }
-        return null;
-      }
-
-      // QR Code 掃描處理
-      async function handleQrScan() {
-        if (isQrScannerActive) {
-          await stopQrScanner();
-          return;
-        }
-
-        try {
-          qrReaderContainer.style.display = 'block';
-          startQrScanButton.disabled = true;
-          startQrScanButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 掃描中...';
-          isQrScannerActive = true;
-
-          if (qrCodeScanner) {
-            await qrCodeScanner.clear();
-          }
-
-          qrCodeScanner = new Html5QrcodeScanner(
-            "qr-reader",
-            { 
-              fps: 10, 
-              qrbox: { width: 250, height: 250 },
-              aspectRatio: 1.0
-            },
-            false
-          );
-
-          const onScanSuccess = async (decodedText) => {
-            console.log(`QR Code 掃描成功: ${decodedText}`);
-            currentQrCode = decodedText;
-
-            await stopQrScanner();
-            
-            qrCodeResultDisplay.classList.remove('hidden');
-            scannedCodeSpan.textContent = decodedText;
-            
-            startQrScanButton.innerHTML = '<i class="fas fa-redo"></i> 重新掃描 QR Code';
-            startQrScanButton.disabled = false;
-            
-            // 自動啟動血壓計相機
-            await startBloodPressureCamera();
-          };
-
-          const onScanError = (errorMessage) => {
-            // 正常的掃描過程中會有很多錯誤訊息，不需要顯示
-          };
-
-          await qrCodeScanner.render(onScanSuccess, onScanError);
-
-        } catch (err) {
-          console.error("QR Code 掃描器初始化錯誤:", err);
-          await showError('QR Code 掃描器啟動失敗', err);
-          startQrScanButton.innerHTML = '<i class="fas fa-camera"></i> 掃描 QR Code';
-          startQrScanButton.disabled = false;
-          isQrScannerActive = false;
-        }
-      }
-
-      // 停止 QR 掃描器
-      async function stopQrScanner() {
-        if (qrCodeScanner && isQrScannerActive) {
-          try {
-            await qrCodeScanner.clear();
-            console.log("QR Code 掃描器已停止");
-          } catch (error) {
-            console.error("停止 QR Code 掃描器時發生錯誤:", error);
-          }
-        }
-        qrReaderContainer.style.display = 'none';
-        isQrScannerActive = false;
-      }
-
-      // 啟動血壓計相機
-      async function startBloodPressureCamera() {
-        if (isCameraActive) return;
-
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: 'environment',
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            } 
-          });
-          
-          videoElement.srcObject = stream;
-          await new Promise((resolve) => {
-            videoElement.onloadedmetadata = resolve;
-          });
-          
-          await videoElement.play();
-          isCameraActive = true;
-          scanButton.disabled = false;
-          console.log('血壓計相機已啟動');
-          
-        } catch (err) {
-          console.error("血壓計相機啟動錯誤:", err);
-          await showError('血壓計相機啟動失敗', err);
-          scanButton.disabled = true;
-        }
-      }
-
-      // 顯示錯誤訊息
-      async function showError(title, error) {
-        let message = title + '\n\n';
-        
-        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-          message += '請使用 HTTPS 連線或在 localhost 環境下使用。\n';
-        } else if (error.name === 'NotAllowedError') {
-          message += '請允許瀏覽器使用相機權限。\n';
-        } else if (error.name === 'NotFoundError') {
-          message += '找不到可用的相機設備。\n';
-        } else if (error.name === 'NotReadableError') {
-          message += '相機可能正在被其他應用程式使用。\n';
-        } else {
-          message += '錯誤詳情: ' + error.message;
-        }
-        
-        alert(message);
-      }
-
-      // 掃描血壓讀數
-      async function handleScan() {
-        if (!ocrWorker) {
-          alert('OCR 引擎尚未準備就緒，請稍候再試。');
-          return;
-        }
-        
-        if (!currentQrCode) {
-          alert('請先掃描 QR Code 取得代碼！');
-          return;
-        }
-
-        scanButton.disabled = true;
-        scanButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 掃描中...';
-        loadingIndicator.classList.remove('hidden');
-
-        try {
-          const processedCanvas = captureAndPreprocess();
-          const { data: { text } } = await ocrWorker.recognize(processedCanvas);
-          console.log('OCR 原始文字:', text);
-          
-          const parsedData = parseBloodPressure(text);
-          
-          if (parsedData) {
-            sysInput.value = parsedData.sys;
-            diaInput.value = parsedData.dia;
-            pulInput.value = parsedData.pul;
-            resultDisplay.classList.remove('hidden');
-            saveButton.disabled = false;
-            editButton.innerHTML = '<i class="fas fa-edit"></i> 編輯';
-            
-            // 設置為只讀
-            sysInput.readOnly = true;
-            diaInput.readOnly = true;
-            pulInput.readOnly = true;
-            
-            // 滾動到結果區域
-            resultDisplay.scrollIntoView({ behavior: 'smooth' });
-          } else {
-            alert('無法辨識血壓數值，請調整角度或光線後重試。\n\n提示：確保數字清晰可見，避免反光或陰影。');
-          }
-        } catch (error) {
-          console.error("OCR 處理錯誤:", error);
-          alert("OCR 處理時發生錯誤，請重試。");
-        } finally {
-          scanButton.innerHTML = '<i class="fas fa-camera"></i> 掃描讀數';
-          scanButton.disabled = false;
-          loadingIndicator.classList.add('hidden');
-        }
-      }
-
-      // 編輯按鈕處理
-      editButton.addEventListener('click', () => {
-        const isReadOnly = sysInput.readOnly;
-        sysInput.readOnly = !isReadOnly;
-        diaInput.readOnly = !isReadOnly;
-        pulInput.readOnly = !isReadOnly;
-        
-        if (isReadOnly) {
-          editButton.innerHTML = '<i class="fas fa-check"></i> 完成';
-          sysInput.focus();
-          sysInput.classList.remove('result-input');
-          diaInput.classList.remove('result-input');
-          pulInput.classList.remove('result-input');
-        } else {
-          editButton.innerHTML = '<i class="fas fa-edit"></i> 編輯';
-          sysInput.classList.add('result-input');
-          diaInput.classList.add('result-input');
-          pulInput.classList.add('result-input');
-        }
-      });
-
-      // 儲存按鈕處理
-      saveButton.addEventListener('click', async () => {
-        if (!currentQrCode) {
-          alert('儲存前請確保已掃描 QR Code 取得代碼！');
-          return;
-        }
-
-        const sys = parseInt(sysInput.value, 10);
-        const dia = parseInt(diaInput.value, 10);
-        const pul = parseInt(pulInput.value, 10);
-
-        if (isNaN(sys) || isNaN(dia) || isNaN(pul)) {
-          alert('請確保所有數值都是有效的數字！');
-          return;
-        }
-
-        if (sys < 50 || sys > 300 || dia < 30 || dia > 200 || pul < 30 || pul > 220) {
-          alert('數值超出正常範圍，請確認輸入是否正確。');
-          return;
-        }
-
-        const reading = {
-          sys,
-          dia,
-          pul,
-          timestamp: new Date().toISOString(),
-          qrCode: currentQrCode
-        };
-
-        try {
-          await addReading(reading);
-          await renderHistory();
-          
-          // 重置表單
-          resultDisplay.classList.add('hidden');
-          saveButton.disabled = true;
-          qrCodeResultDisplay.classList.add('hidden');
-          currentQrCode = null;
-          
-          // 重置按鈕狀態
-          startQrScanButton.innerHTML = '<i class="fas fa-camera"></i> 掃描 QR Code';
-          scanButton.disabled = true;
-          
-          alert('血壓記錄已成功儲存！');
-        } catch (error) {
-          console.error('儲存錯誤:', error);
-          alert('儲存失敗，請重試。');
-        }
-      });
-
-      // 綁定事件監聽器
-      startQrScanButton.addEventListener('click', handleQrScan);
-      scanButton.addEventListener('click', handleScan);
-
-      // 應用程式初始化
-      async function initialize() {
-        console.log('應用程式初始化中...');
-        
-        // 並行初始化
-        await Promise.all([
-          initializeTesseract(),
-          (async () => {
-            initializeChart();
-            await renderHistory();
-          })()
-        ]);
-        
-        console.log('應用程式初始化完成');
-      }
-
-      // 啟動應用程式
-      initialize().catch(error => {
-        console.error('應用程式初始化失敗:', error);
-      });
-    });
-  </script>
+    </script>
 </body>
 </html>
