@@ -233,7 +233,7 @@
             resetBtn.addEventListener('click', resetApp);
 
             // --- Core Functions ---
-            async function startQrScan() { // 將此函數設為 async
+            async function startQrScan() {
                 html5QrCode = new Html5Qrcode("qr-reader");
                 appState = 'SCANNING_QR';
                 updateUI();
@@ -241,24 +241,30 @@
                 try {
                     // 嘗試獲取所有攝影機
                     const devices = await Html5Qrcode.getCameras();
+                    let cameraId = null;
+
                     if (devices && devices.length) {
-                        let cameraId = null;
-                        // 尋找後置攝影機 (environment facing camera)
-                        const rearCamera = devices.find(device => device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('environment'));
+                        // 優先尋找後置攝影機 (environment facing camera)
+                        const rearCamera = devices.find(
+                            device => device.label.toLowerCase().includes('back') || 
+                                      device.label.toLowerCase().includes('environment')
+                        );
+
                         if (rearCamera) {
                             cameraId = rearCamera.id;
                             console.log("找到後置攝影機:", rearCamera.label, rearCamera.id);
                         } else {
                             // 如果沒有明確標識的後置攝影機，則使用第一個可用的攝影機
+                            // 注意：這可能是前置攝像頭，但為了確保功能至少能啟動，作為備用方案
                             cameraId = devices[0].id;
-                            console.log("使用預設攝影機:", devices[0].label, devices[0].id);
+                            console.log("未找到明確後置攝影機，使用預設攝影機:", devices[0].label, devices[0].id);
                         }
                         
                         const config = { fps: 10, qrbox: { width: 250, height: 250 } };
                         // 使用cameraId啟動掃描器
                         await html5QrCode.start(cameraId, config, onQrScanSuccess);
                     } else {
-                        throw new Error("沒有找到任何攝影機。");
+                        throw new Error("沒有找到任何攝影機。請檢查裝置是否支援或已連接攝影機。");
                     }
                 } catch (err) {
                     console.error("無法啟動 QR Code 掃描器", err);
