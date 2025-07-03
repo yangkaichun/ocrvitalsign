@@ -129,8 +129,8 @@
 
         <div id="controls" class="card controls">
             <button id="start-scan-btn">1. 開始掃描 QR Code</button>
-            <button id="capture-bp-btn" class="hidden">2. 擷取血壓數值</button>
-            <button id="reset-btn" class="hidden">重新開始</button>
+            <button id="open-bp-camera-btn" class="hidden">2. 擷取血壓數值</button>
+            <button id="capture-bp-value-btn" class="hidden">擷取</button> <button id="reset-btn" class="hidden">重新開始</button>
         </div>
 
         <div id="results-container" class="card results-container hidden">
@@ -158,7 +158,8 @@
             const qrReaderElement = document.getElementById('qr-reader');
             const bpOverlayElement = document.getElementById('blood-pressure-overlay');
             const startScanBtn = document.getElementById('start-scan-btn');
-            const captureBpBtn = document.getElementById('capture-bp-btn');
+            const openBpCameraBtn = document.getElementById('open-bp-camera-btn'); // 原來的擷取血壓數值按鈕，現在用於開啟相機
+            const captureBpValueBtn = document.getElementById('capture-bp-value-btn'); // 新增的「擷取」按鈕
             const resetBtn = document.getElementById('reset-btn');
             const resultsContainer = document.getElementById('results-container');
             const qrResultDiv = document.getElementById('qr-result');
@@ -170,7 +171,8 @@
             const ocrCtx = ocrCanvas.getContext('2d', { willReadFrequently: true });
 
             // --- State Management ---
-            let appState = 'INITIAL'; // INITIAL, SCANNING_QR, QR_SCANNED, PROCESSING_OCR, COMPLETE
+            // 新增：SCANNING_BP_CAMERA_OPENED - 表示血壓計相機已開啟，等待使用者點擊「擷取」
+            let appState = 'INITIAL'; // INITIAL, SCANNING_QR, QR_SCANNED, SCANNING_BP_CAMERA_OPENED, PROCESSING_OCR, COMPLETE
             let html5QrCode = null;
             let qrResultData = null;
             let tesseractWorker = null;
@@ -203,9 +205,12 @@
             // --- UI Update Function ---
             function updateUI() {
                 startScanBtn.classList.toggle('hidden', appState !== 'INITIAL');
-                captureBpBtn.classList.toggle('hidden', appState !== 'QR_SCANNED');
+                // openBpCameraBtn 在 QR_SCANNED 狀態下顯示，用於開啟血壓計相機
+                openBpCameraBtn.classList.toggle('hidden', appState !== 'QR_SCANNED');
+                // captureBpValueBtn 在 SCANNING_BP_CAMERA_OPENED 狀態下顯示，用於觸發 OCR
+                captureBpValueBtn.classList.toggle('hidden', appState !== 'SCANNING_BP_CAMERA_OPENED');
                 resetBtn.classList.toggle('hidden', appState !== 'COMPLETE');
-                resultsContainer.classList.toggle('hidden', appState === 'INITIAL' || appState === 'SCANNING_QR');
+                resultsContainer.classList.toggle('hidden', appState === 'INITIAL' || appState === 'SCANNING_QR' || appState === 'SCANNING_BP_CAMERA_OPENED');
                 
                 qrResultDiv.classList.toggle('hidden', !qrResultData);
                 if (qrResultData) {
@@ -215,11 +220,13 @@
                 bpResultDiv.classList.toggle('hidden', appState !== 'PROCESSING_OCR' && appState !== 'COMPLETE');
                 
                 // 控制 QR Reader 顯示和覆蓋層
-                if (appState === 'SCANNING_QR' || appState === 'PROCESSING_OCR') {
+                if (appState === 'SCANNING_QR' || appState === 'SCANNING_BP_CAMERA_OPENED' || appState === 'PROCESSING_OCR') {
                     qrReaderElement.style.display = 'block'; // 顯示預覽區
-                    bpOverlayElement.style.display = (appState === 'PROCESSING_OCR') ? 'block' : 'none';
+                    // 只有在血壓計 OCR 階段才顯示紅色框
+                    bpOverlayElement.style.display = (appState === 'SCANNING_BP_CAMERA_OPENED' || appState === 'PROCESSING_OCR') ? 'block' : 'none';
                     // 確保 qr-reader 內部的內容被清空，只顯示視頻流
-                    if (qrReaderElement.innerHTML === '相機預覽區') {
+                    const videoElement = qrReaderElement.querySelector('video');
+                    if (!videoElement) { // 如果沒有視頻元素，說明是剛剛開啟或者從關閉狀態恢復
                         qrReaderElement.innerHTML = ''; 
                     }
                 } else {
@@ -239,8 +246,11 @@
                     case 'QR_SCANNED':
                         statusElement.textContent = 'QR Code 掃描成功！請點擊「擷取血壓數值」按鈕開啟相機。';
                         break;
+                    case 'SCANNING_BP_CAMERA_OPENED':
+                        statusElement.textContent = '相機已開啟，請將血壓計螢幕對準紅色框線，然後點擊「擷取」按鈕。';
+                        break;
                     case 'PROCESSING_OCR':
-                        statusElement.textContent = '正在開啟相機並處理血壓計影像...';
+                        statusElement.textContent = '正在處理血壓計影像...';
                         bpResultText.textContent = '處理中...';
                         break;
                     case 'COMPLETE':
@@ -251,13 +261,14 @@
 
             // --- Event Listeners ---
             startScanBtn.addEventListener('click', startQrScan);
-            captureBpBtn.addEventListener('click', captureAndProcessBP);
+            openBpCameraBtn.addEventListener('click', openBpCamera); // 綁定到新函數
+            captureBpValueBtn.addEventListener('click', captureAndProcessBP); // 綁定到新按鈕
             resetBtn.addEventListener('click', resetApp);
 
             // --- Core Functions ---
 
             // 輔助函數：啟動攝影機並返回一個 promise
-            async function startCamera(onSuccess, onError, config) {
+            async function startCamera(config, onCameraStarted, onCameraError) {
                 // 如果 html5QrCode 實例存在，先清理它以確保新的啟動
                 if (html5QrCode) {
                     try {
@@ -275,10 +286,12 @@
                     await html5QrCode.start(
                         { facingMode: { exact: "environment" } }, 
                         config, 
-                        onSuccess,
-                        (error) => { console.warn("後置攝影機錯誤 (warning):", error); } // 增加警告回調
+                        // onScanSuccess 這裡不使用，因為 startCamera 不負責掃描邏輯，只負責啟動相機
+                        (decodedText, decodedResult) => {}, 
+                        (error) => { console.warn("後置攝影機錯誤 (warning):", error); } 
                     );
                     console.log("成功啟動後置攝影機。");
+                    onCameraStarted(); // 通知相機已啟動
                     return true; // 成功啟動
                 } catch (err) {
                     console.error("無法啟動後置攝影機，嘗試改用預設攝影機。", err);
@@ -300,10 +313,12 @@
                             await html5QrCode.start(
                                 preferredDeviceId, 
                                 config, 
-                                onSuccess,
-                                (error) => { console.warn("預設攝影機錯誤 (warning):", error); } // 增加警告回調
+                                // onScanSuccess 這裡不使用
+                                (decodedText, decodedResult) => {}, 
+                                (error) => { console.warn("預設攝影機錯誤 (warning):", error); } 
                             );
                             console.log("改用預設/找到的攝影機:", preferredDeviceId);
+                            onCameraStarted(); // 通知相機已啟動
                             return true; // 成功啟動
                         } else {
                             throw new Error("沒有找到任何可用的攝影機。");
@@ -311,7 +326,7 @@
                     } catch (fallbackErr) {
                         console.error("無法啟動任何攝影機。", fallbackErr);
                         statusElement.textContent = `錯誤：無法啟動攝影機。請檢查權限設定或裝置是否支援。${fallbackErr.message}`;
-                        onError(fallbackErr); // 呼叫錯誤回調
+                        onCameraError(fallbackErr); // 呼叫錯誤回調
                         return false; // 啟動失敗
                     }
                 }
@@ -328,26 +343,41 @@
                     qrbox: { width: 250, height: 250 },
                 };
                 
-                // 使用輔助函數啟動相機
-                const cameraStarted = await startCamera(onQrScanSuccess, (err) => {
+                // 使用輔助函數啟動相機，並傳入 QR 碼掃描的回調函數
+                const cameraStarted = await startCamera(config, () => {
+                    statusElement.textContent = '請將 QR Code 對準掃描框。';
+                    // 成功啟動後，才開始 QR 碼掃描器
+                    if (html5QrCode) {
+                        html5QrCode.start(
+                            { facingMode: { exact: "environment" } }, // 再次指定，確保掃描邏輯使用正確的相機
+                            config,
+                            onQrScanSuccess // 將 QR 碼成功回調傳遞給它
+                        ).catch(err => {
+                            console.error("QR Code 掃描器啟動失敗:", err);
+                            statusElement.textContent = `QR 掃描失敗：${err.message}`;
+                            appState = 'INITIAL';
+                            updateUI();
+                        });
+                    }
+                }, (err) => {
                     console.error("QR 掃描器啟動失敗:", err);
                     appState = 'INITIAL';
                     updateUI();
-                }, config);
+                });
 
-                if (cameraStarted) {
-                    statusElement.textContent = '請將 QR Code 對準掃描框。';
+                if (!cameraStarted) {
+                    statusElement.textContent = '無法啟動相機進行 QR Code 掃描。';
                 }
             }
 
             async function onQrScanSuccess(decodedText, decodedResult) {
+                // 此回調僅在 QR 碼被掃描到時觸發一次
                 if (appState !== 'SCANNING_QR') return; 
                 
                 console.log(`QR Code 掃描成功: ${decodedText}`);
                 qrResultData = decodedText;
-                appState = 'QR_SCANNED';
-
-                // **關鍵變更：QR Code 掃描成功後立即停止相機**
+                
+                // QR Code 掃描成功後立即停止相機
                 if (html5QrCode) {
                     try {
                         await html5QrCode.stop();
@@ -358,76 +388,90 @@
                         console.error("停止 QR 掃描器失敗", err);
                     }
                 }
+                appState = 'QR_SCANNED'; // 進入等待開啟血壓計相機的狀態
                 updateUI();
             }
 
-            async function captureAndProcessBP() {
-                appState = 'PROCESSING_OCR';
+            async function openBpCamera() {
+                appState = 'SCANNING_BP_CAMERA_OPENED'; // 新狀態
                 updateUI();
-                captureBpBtn.disabled = true;
+                captureBpValueBtn.disabled = true; // 暫時禁用，直到相機啟動
 
-                // **關鍵變更：在擷取血壓時重新開啟相機**
                 const config = { 
-                    fps: 1, // OCR 不需要高幀率，降低功耗
-                    qrbox: { width: qrReaderElement.offsetWidth, height: qrReaderElement.offsetHeight }, // 讓 OCR 覆蓋整個預覽區，因為沒有 QR box
+                    fps: 1, 
+                    // 這裡讓 QR box 覆蓋整個預覽區，因為現在只關注整個畫面 OCR
+                    qrbox: { width: qrReaderElement.offsetWidth, height: qrReaderElement.offsetHeight }, 
                 };
 
-                // 啟動相機，並在成功後進行 OCR
-                const cameraStarted = await startCamera(async () => {
-                    console.log("血壓計掃描相機已啟動，準備擷取畫面...");
-                    try {
-                        const videoElement = document.querySelector('#qr-reader video');
-                        if (!videoElement || videoElement.readyState < 2) { 
-                            console.warn("視訊元素尚未就緒，嘗試等待或重新確保串流。");
-                            await new Promise(resolve => setTimeout(resolve, 500)); 
-                            if (!videoElement || videoElement.readyState < 2) {
-                                throw new Error("視訊串流無法穩定，無法擷取畫面。");
-                            }
-                        }
-
-                        // 1. Capture and preprocess the image
-                        const processedCanvas = preprocessImage(videoElement);
-                        
-                        // 2. Perform OCR
-                        const { data: { text } } = await tesseractWorker.recognize(processedCanvas);
-                        console.log('OCR 原始結果:', text);
-
-                        // 3. Parse and display result
-                        const parsedResult = parseBPResult(text);
-                        bpResultText.textContent = parsedResult;
-
-                    } catch (error) {
-                        console.error("OCR 處理失敗:", error);
-                        bpResultText.textContent = `辨識失敗，請重試。錯誤: ${error.message}`;
-                    } finally {
-                        // **關鍵變更：OCR 處理完成後關閉相機**
-                        if (html5QrCode) {
-                            try {
-                                await html5QrCode.stop();
-                                html5QrCode.clear();
-                                html5QrCode = null;
-                                console.log("血壓計 OCR 完成，相機已關閉。");
-                            } catch (err) {
-                                console.error("停止 OCR 掃描器失敗", err);
-                            }
-                        }
-                        appState = 'COMPLETE';
-                        updateUI();
-                        captureBpBtn.disabled = false;
-                    }
+                const cameraStarted = await startCamera(config, () => {
+                    statusElement.textContent = '相機已開啟，請將血壓計螢幕對準紅色框線，然後點擊「擷取」按鈕。';
+                    captureBpValueBtn.disabled = false; // 相機啟動後啟用「擷取」按鈕
                 }, (err) => {
-                    console.error("血壓計掃描器啟動失敗:", err);
-                    bpResultText.textContent = `無法開啟相機進行OCR。錯誤: ${err.message}`;
+                    console.error("血壓計相機啟動失敗:", err);
+                    statusElement.textContent = `無法開啟相機進行OCR。錯誤: ${err.message}`;
                     appState = 'QR_SCANNED'; // 返回到等待擷取狀態
                     updateUI();
-                    captureBpBtn.disabled = false;
-                }, config);
+                    captureBpValueBtn.disabled = false;
+                });
 
                 if (!cameraStarted) {
                     statusElement.textContent = '無法啟動相機進行血壓計掃描。';
-                    appState = 'QR_SCANNED'; // 回到等待擷取狀態
+                    appState = 'QR_SCANNED'; 
                     updateUI();
-                    captureBpBtn.disabled = false;
+                    captureBpValueBtn.disabled = false;
+                }
+            }
+
+            async function captureAndProcessBP() {
+                // 檢查是否處於正確狀態以執行 OCR
+                if (appState !== 'SCANNING_BP_CAMERA_OPENED') {
+                    console.warn("狀態不正確，無法擷取血壓數值。");
+                    return;
+                }
+
+                appState = 'PROCESSING_OCR';
+                updateUI();
+                captureBpValueBtn.disabled = true; // 禁用擷取按鈕
+
+                try {
+                    const videoElement = document.querySelector('#qr-reader video');
+                    if (!videoElement || videoElement.readyState < 2) { 
+                        console.warn("視訊元素尚未就緒，嘗試等待或重新確保串流。");
+                        await new Promise(resolve => setTimeout(resolve, 500)); 
+                        if (!videoElement || videoElement.readyState < 2) {
+                            throw new Error("視訊串流無法穩定，無法擷取畫面。");
+                        }
+                    }
+
+                    // 1. Capture and preprocess the image
+                    const processedCanvas = preprocessImage(videoElement);
+                    
+                    // 2. Perform OCR
+                    const { data: { text } } = await tesseractWorker.recognize(processedCanvas);
+                    console.log('OCR 原始結果:', text);
+
+                    // 3. Parse and display result
+                    const parsedResult = parseBPResult(text);
+                    bpResultText.textContent = parsedResult;
+
+                } catch (error) {
+                    console.error("OCR 處理失敗:", error);
+                    bpResultText.textContent = `辨識失敗，請重試。錯誤: ${error.message}`;
+                } finally {
+                    // OCR 處理完成後關閉相機
+                    if (html5QrCode) {
+                        try {
+                            await html5QrCode.stop();
+                            html5QrCode.clear();
+                            html5QrCode = null;
+                            console.log("血壓計 OCR 完成，相機已關閉。");
+                        } catch (err) {
+                            console.error("停止 OCR 掃描器失敗", err);
+                        }
+                    }
+                    appState = 'COMPLETE';
+                    updateUI();
+                    // captureBpValueBtn.disabled = false; // 不再需要啟用，因為會隱藏
                 }
             }
             
