@@ -6,7 +6,7 @@
   <title>血壓計數值辨識器 - QR Code 啟用</title>
   <style>
     body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+      font-family: -apple-system, BlinkMacMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
       margin: 0; 
       background-color: #f4f4f9; 
       color: #333; 
@@ -367,7 +367,12 @@
             console.log(`QR Code 掃描成功: ${decodedText}`);
             currentQrCode = decodedText; // 儲存掃描到的代碼
 
-            qrCodeScanner.clear(); // 停止 QR 掃描器
+            try {
+                await qrCodeScanner.stop(); // 停止 QR 掃描器
+                console.log("QR Code 掃描器已停止");
+            } catch (error) {
+                console.error("停止 QR Code 掃描器時發生錯誤:", error);
+            }
             qrReaderContainer.style.display = 'none'; // 隱藏 QR Code 掃描器
             qrCodeResultDisplay.style.display = 'block';
             scannedCodeSpan.textContent = decodedText;
@@ -383,9 +388,27 @@
         const onScanError = (errorMessage) => {
             // console.warn(`QR Code 掃描錯誤: ${errorMessage}`);
             // 通常在沒有找到 QR Code 時會不斷觸發，不需要每次都顯示錯誤
+            // 如果長時間無法啟動，可能是權限問題，但這裡不做重複提示
         };
 
-        qrCodeScanner.render(onScanSuccess, onScanError);
+        try {
+            await qrCodeScanner.render(onScanSuccess, onScanError);
+        } catch (err) {
+            console.error("初始化 QR Code 掃描器時發生錯誤:", err);
+            let errorMessage = '無法啟動 QR Code 相機。';
+            if (window.location.protocol !== 'https:') {
+                errorMessage += '請確認您正透過 **HTTPS** 連線載入頁面，或使用 **localhost**。';
+            } else if (err.name === 'NotAllowedError') {
+                errorMessage += '請允許瀏覽器使用相機的權限。';
+            } else if (err.name === 'NotFoundError') {
+                errorMessage += '找不到可用的相機設備。';
+            } else if (err.name === 'NotReadableError') {
+                errorMessage += '相機可能正在被其他應用程式使用，請關閉後重試。';
+            }
+            alert(errorMessage);
+            startQrScanButton.textContent = '掃描 QR Code';
+            startQrScanButton.disabled = false;
+        }
       }
 
       async function startBloodPressureCamera() {
@@ -397,8 +420,19 @@
           await videoElement.play(); // 確保影片開始播放
           console.log('血壓計相機已啟動');
         } catch (err) {
-          alert('無法啟動血壓計相機。請確認已授權並使用 HTTPS 連線。');
           console.error("血壓計相機啟動錯誤:", err);
+          let errorMessage = '無法啟動血壓計相機。';
+            if (window.location.protocol !== 'https:') {
+                errorMessage += '請確認您正透過 **HTTPS** 連線載入頁面，或使用 **localhost**。';
+            } else if (err.name === 'NotAllowedError') {
+                errorMessage += '請允許瀏覽器使用相機的權限。';
+            } else if (err.name === 'NotFoundError') {
+                errorMessage += '找不到可用的相機設備。';
+            } else if (err.name === 'NotReadableError') {
+                errorMessage += '相機可能正在被其他應用程式使用，請關閉後重試。';
+            }
+            alert(errorMessage);
+            scanButton.disabled = true; // 相機無法開啟則禁用掃描按鈕
         }
       }
 
@@ -487,6 +521,10 @@
         await renderHistory();
         // 初始狀態下，血壓掃描按鈕是禁用的
         scanButton.disabled = true;
+        // 如果 QR Code 掃描器已經有實例，則直接啟用按鈕
+        if (qrCodeScanner) {
+            startQrScanButton.disabled = false;
+        }
       }
 
       main();
