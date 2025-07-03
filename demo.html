@@ -232,8 +232,9 @@
                     bpOverlayElement.style.display = (appState === 'SCANNING_BP_CAMERA_OPENED' || appState === 'PROCESSING_OCR') ? 'block' : 'none';
                     
                     // 只有當 Html5Qrcode 預計會插入 video 元素時才清空佔位文字
+                    // 檢查是否已插入 video 元素，如果沒有且仍有佔位文字，則清空
                     if (!qrReaderElement.querySelector('video') && qrReaderElement.innerHTML === '相機預覽區') {
-                        qrReaderElement.innerHTML = ''; // 清空，等待 Html5Qrcode 渲染 video
+                        qrReaderElement.innerHTML = ''; 
                     }
 
                 } else { // 相機應該關閉時
@@ -295,8 +296,8 @@
             /**
              * 輔助函數：啟動攝影機，且**強制只使用後置鏡頭**。
              * @param {Object} config - Html5Qrcode.start 的配置對象 (fps, qrbox 等)
-             * @param {function} onScanSuccess - QR 碼掃描成功回調 (在 QR 模式下使用)
-             * @param {function} onScanError - 掃描錯誤回調
+             * @param {function} onScanSuccess - 掃描成功回調 (例如 QR 碼掃描成功，或僅表示相機成功啟動)
+             * @param {function} onScanError - 掃描錯誤回調 (相機啟動失敗等)
              * @returns {Promise<boolean>} - 如果相機成功啟動則為 true，否則為 false
              */
             async function startRearCamera(config, onScanSuccess, onScanError) {
@@ -329,7 +330,7 @@
                     await html5QrCode.start(
                         { facingMode: { exact: "environment" } }, 
                         config, 
-                        onScanSuccess,
+                        onScanSuccess, // 這裡將 onScanSuccess 傳入給 Html5Qrcode.start
                         onScanError 
                     );
                     console.log("後置攝影機成功啟動。");
@@ -338,7 +339,7 @@
                     console.error("無法啟動後置攝影機，錯誤詳情:", err);
                     statusElement.textContent = `錯誤：無法啟動後置攝影機。請確認設備有後置鏡頭且已授權使用。${err.message || err.name || '未知錯誤'}`;
                     
-                    if (html5QrCode) { // 如果啟動失敗，清理預覽區並重置實例
+                    if (html5QrCode) { 
                         try {
                             html5QrCode.clear(); 
                             html5QrCode = null;
@@ -363,26 +364,29 @@
                 const config = { 
                     fps: 10, 
                     qrbox: { width: 250, height: 250 },
+                    // scanRegion: { x: 0, y: 0, width: 100, height: 100 } // 可以定義掃描區域，如果需要
                 };
                 
-                // 直接嘗試啟動後置攝影機，不提供回退方案
+                // 直接嘗試啟動後置攝影機，並傳入 onQrScanSuccess 和錯誤回調
                 const cameraStarted = await startRearCamera(
                     config, 
-                    onQrScanSuccess, // QR 碼成功回調
-                    (qrError) => { // 錯誤回調
-                        console.error("QR Code 掃描器無法啟動，因為後置鏡頭無法使用:", qrError);
+                    onQrScanSuccess, // 當 QR 碼被掃描到時，此回調將被觸發
+                    (qrError) => { // 攝影機啟動失敗或掃描錯誤時的回調
+                        console.error("QR Code 掃描器無法啟動，因為後置鏡頭無法使用或掃描錯誤:", qrError);
                         statusElement.textContent = `錯誤：QR 掃描器需要後置鏡頭，但無法啟動。請確認授權。${qrError.message || qrError.name}`;
-                        appState = 'INITIAL'; // 回到初始狀態
+                        appState = 'INITIAL'; 
                         updateUI();
                     }
                 );
 
                 if (cameraStarted) {
+                    // 相機成功啟動後，Html5Qrcode 內部會自動開始掃描，onQrScanSuccess 將被觸發
                     statusElement.textContent = '請將 QR Code 對準掃描框。';
                 }
             }
 
             async function onQrScanSuccess(decodedText, decodedResult) {
+                // 此回調僅在 QR 碼被掃描到時觸發一次
                 if (appState !== 'SCANNING_QR') return; 
                 
                 console.log(`QR Code 掃描成功: ${decodedText}`);
@@ -423,11 +427,11 @@
                     qrbox: { width: qrReaderElement.offsetWidth, height: qrReaderElement.offsetHeight }, 
                 };
 
-                // 嘗試啟動後置攝影機
+                // 嘗試啟動後置攝影機，用於 OCR 模式
                 const cameraStarted = await startRearCamera(
                     config, 
-                    // 在這裡不需要傳遞 onScanSuccess，因為這個模式不是掃描 QR 碼
-                    (decodedText, decodedResult) => { console.log("OCR 模式下不應觸發 QR 碼掃描成功。"); },
+                    // 在 OCR 模式下，相機啟動後不需要觸發任何「掃描成功」的回調
+                    (decodedText, decodedResult) => { console.log("OCR 模式下不應觸發 QR 碼掃描成功，僅表示相機串流活躍。"); },
                     (err) => { // 錯誤回調
                         console.error("血壓計相機啟動失敗:", err);
                         statusElement.textContent = `無法開啟相機進行OCR。錯誤: ${err.message || err.name}`;
